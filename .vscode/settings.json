@@ -1,0 +1,20 @@
+{
+    "files.associations": {
+        "cmath": "cpp",
+        "math.h": "c",
+        "stdio.h": "c",
+        "stat.h": "c",
+        "math_3d_obj_def.h": "c",
+        "float.h": "c",
+        "mvector3.h": "c",
+        "mobject3.h": "c",
+        "lib3d_debug.h": "c",
+        "lib3d.h": "c",
+        "mmatrix3.h": "c",
+        "mobject3_collision.h": "c",
+        "stdlib.h": "c",
+        "image.h": "c",
+        "cl.h": "c",
+        "color.h": "c"
+    }
+}
