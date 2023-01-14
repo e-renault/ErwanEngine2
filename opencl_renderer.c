@@ -392,4 +392,6 @@ int main(int argc, char *argv[]) {
     free(triangles);
     free(output_buffer_ret);
     free(zbuffer_ret);
+
+    //test
 }
