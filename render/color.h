@@ -21,7 +21,7 @@
 #endif
 
 typedef struct rgb {
-    EE_INT r, g, b;
+    EE_FLOAT r, g, b;
 } rgb;
 
 #endif //COLOR_H_

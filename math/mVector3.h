@@ -13,9 +13,11 @@
 
 #ifndef EE_FLOAT
   #ifndef FLT_MIN
+    #define EE_ARCCOS(c) (acos(c)/M_PI)
     #define EE_FLOAT cl_float
     #define EE_INT cl_int
   #else
+    #define EE_ARCCOS(c) (acospi(c))
     #define EE_FLOAT float
     #define EE_INT int
   #endif
@@ -88,10 +90,19 @@ Vector3 getNorm(Vector3 v) {
 
 Vector3 getNorm2(Vector3 v1, Vector3 v2) {
     Vector3 ret = crossProduct(v1,v2);
-    //TODO: renormalize
-    //ret = getNorm(ret);
+    //TODO: renormalize (done)
+    ret = getNorm(ret);
     return ret;
 }
 
+float getAngle(Vector3 v1, Vector3 v2) {
+  float ret;
+
+  float up = (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z);
+  float div = getLength2(v1) * getLength2(v2);
+  ret = EE_ARCCOS(up/div);
+
+  return ret;
+}
 
 #endif // M_VECTOR3_H_

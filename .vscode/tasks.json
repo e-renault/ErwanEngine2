@@ -13,6 +13,8 @@
                 "-std=gnu90",
                 "-lm", 
                 "-lOpenCL", 
+                "-lglut", 
+                "-lGL",
             ],
             "options": {
                 "cwd": "${fileDirname}"

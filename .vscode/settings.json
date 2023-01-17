@@ -15,6 +15,7 @@
         "stdlib.h": "c",
         "image.h": "c",
         "cl.h": "c",
-        "color.h": "c"
+        "color.h": "c",
+        "glu.h": "c"
     }
 }

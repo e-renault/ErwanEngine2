@@ -6,15 +6,13 @@
 
 typedef struct frameRGB {
     int x_res, y_res;
-    int color_scale;
     rgb* frame;
 } frameRGB;
 
-frameRGB newFrame(int x_res, int y_res, int colorScale) {
+frameRGB newFrame(int x_res, int y_res) {
     frameRGB ret;
     ret.x_res = x_res;
     ret.y_res = y_res;
-    ret.color_scale = colorScale;
 
     ret.frame = (rgb*) calloc(x_res * y_res, sizeof(rgb));
 
@@ -41,7 +39,7 @@ void generateImg(frameRGB image, char* location) {
     int y;for (y = 0; y < image.y_res; y++) {
         int x;for (x = 0; x < image.x_res; x++) {
             rgb c = image.frame[y * image.x_res + x];
-            fprintf(ppmfile, "%d %d %d\n", c.r, c.g, c.b);
+            fprintf(ppmfile, "%d %d %d\n", (int) (c.r *255),(int) (c.g *255),(int) (c.b *255));
         }
     }
     fclose(ppmfile);

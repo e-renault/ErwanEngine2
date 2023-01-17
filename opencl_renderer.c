@@ -2,11 +2,18 @@
 #include <sys/stat.h>
 #include <stdlib.h> //malloc
 #include <math.h>
+#include <sys/time.h>
+
+#include <GL/gl.h>
+#include <GL/glut.h>
+#include <GL/glu.h>
+#include <stdio.h>
 
 #include "math/lib3D.h"
 #include "math/lib3D_debug.h"
 #include "render/image.h"
 #include "render/color.h"
+
 
 #define CL_TARGET_OPENCL_VERSION 300
 #ifdef __APPLE__
@@ -21,9 +28,16 @@
 #define DEBUG_INFO 0
 #define DEBUG_SETUP_INFO 0
 #define DEBUG_RUN_INFO 0
-#define DEBUG_RUN_TIME 1
+#define DEBUG_RUN_TIME 0
 #define SUCCESS_MSG "(Done)"
 #define ERROR_MSG "(Error)"
+
+
+const unsigned int x_res = 400;
+const unsigned int y_res = 300;
+float* sharedData;//displayed data buffer
+int frame, time, timebase;//used for FPS counter
+
 
 char* load_program_source(const char *filename, cl_int* status);
 char* load_program_source(const char *filename, cl_int* status_ret) {
@@ -117,30 +131,75 @@ cl_kernel initKernelProgram(cl_uint numDevices, cl_device_id* devices, cl_contex
     return kernel;
 }
 
+void display();
+void display(){
+    glClearColor( 0, 0, 0, 1 );
+    glClear( GL_COLOR_BUFFER_BIT );
+
+
+    //FPS Counter
+    frame++;
+	time=glutGet(GLUT_ELAPSED_TIME);
+	if (time - timebase > 1000) {
+        if (DEBUG_RUN_TIME) printf("FPS:%4.2f\n", frame*1000.0/(time-timebase));fflush(stdout);
+	 	timebase = time;
+		frame = 0;
+    }
+
+    //draw pixels
+    glDrawPixels( x_res, y_res, GL_RGB, GL_FLOAT, sharedData );
+    glutSwapBuffers();
+    glutPostRedisplay();
+}
 
 int main(int argc, char *argv[]) {
     cl_int status;
-    cl_int x_res, y_res, res, x, y, i;
+    cl_int res, x, y, i;
     
     /** Init datas **/
     if (DEBUG_INFO) printf(" ### Starting program, creating datas ###");
+    
+    //init GLUT
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
+    glutInitWindowSize(x_res, y_res);
+    glutCreateWindow("ErwanEngine2.0");
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-    x_res = 150;
-    y_res = 100;
+    //GLUT FPS counter
+    frame=0;time=0;timebase=0;
+
+    //scene build
     res = x_res * y_res;
-
-    Point3 cam_coordinate = {0,0,1};
-    Vector3 cam_lookat = {0,0,1};
-    cl_int nbTriangles = 2;
+    Point3 cam_coordinate = {0.2, 0.5, 2.5};
+    Vector3 cam_lookat = {0.20, 0, -1};
+    cl_int nbTriangles = 11;
     Triangle3* triangles = (Triangle3*) calloc(nbTriangles, sizeof(Triangle3));
 
-    Point3 p1 = {-3, -3, 10};
-    Point3 p2 = {3, -3, 10};
-    Point3 p3 = {-3, 3, 10};
-    Point3 p4 = {0.5, 0.5, 1};
+    Point3 p000 = {0, 0, 0};
+    Point3 p100 = {1, 0, 0};
+    Point3 p110 = {1, 1, 0};
+    Point3 p010 = {0, 1, 0};
+    Point3 p001 = {0, 0, 1};
+    Point3 p101 = {1, 0, 1};
+    Point3 p111 = {1, 1, 1};
+    Point3 p011 = {0, 1, 1};
 
-    triangles[0] = newTriangle3(p1, p2, p3);
-    triangles[1] = newTriangle3(p1, p2, p4);
+    Point3 pla = {-0.001, -150, -100};
+    Point3 plb = {-0.001, 50, -100};
+    Point3 plc = {-0.001, 50, 100};
+
+    triangles[0] = newTriangle3(pla, plb, plc);
+    triangles[10] = newTriangle3(p000, p100, p110);
+    triangles[1] = newTriangle3(p000, p010, p110);
+    triangles[2] = newTriangle3(p100, p101, p111);
+    triangles[3] = newTriangle3(p100, p110, p111);
+    triangles[4] = newTriangle3(p010, p110, p111);
+    triangles[5] = newTriangle3(p010, p011, p111);
+    triangles[6] = newTriangle3(p000, p100, p101);
+    triangles[7] = newTriangle3(p000, p101, p001);
+    triangles[8] = newTriangle3(p000, p001, p011);
+    triangles[9] = newTriangle3(p000, p010, p011);
 
 
 
@@ -327,6 +386,9 @@ int main(int argc, char *argv[]) {
     if (DEBUG_SETUP_INFO)  printf("\nSTEP 10: Enqueue the kernel for execution\n");
     fflush(stdout);
     
+    struct timeval stop, start;
+    gettimeofday(&start, NULL);
+
     size_t globalWorkSize[2]={x_res, y_res};
     status = clEnqueueNDRangeKernel( cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
 
@@ -353,8 +415,9 @@ int main(int argc, char *argv[]) {
     }
     
     clFinish(cmdQueue);
-        
-
+    
+    gettimeofday(&stop, NULL);
+    printf("took %lu us\n", (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec); 
     
     
     // STEP 12: Read the output buffer back to the host
@@ -371,13 +434,30 @@ int main(int argc, char *argv[]) {
     
 
     //image generation
-    frameRGB image = newFrame(x_res, y_res, 255);
+    frameRGB image = newFrame(x_res, y_res);
     for (x = 0; x<x_res; x++) {
         for (y = 0; y<y_res; y++) {
             image.frame[y *x_res + x] = output_buffer_ret[y *x_res + x];
         }
     }
     generateImg(image, "output");
+
+    //recover data
+    float* mdata = calloc(x_res*y_res*3, sizeof(float));
+    for( x = 0; x < x_res; ++x ) {
+        for( y = 0; y < y_res; ++y ) {
+            int pointer =       (y * x_res + x) * 3;
+            int inv_pointer =   (y_res-y) * x_res + x;
+            mdata[pointer + 0] = output_buffer_ret[inv_pointer].r;
+            mdata[pointer + 1] = output_buffer_ret[inv_pointer].g;
+            mdata[pointer + 2] = output_buffer_ret[inv_pointer].b;
+        }
+    }
+    sharedData = mdata;
+
+    //display loop
+    glutDisplayFunc(display);
+    glutMainLoop();
     
 
     // STEP 13: Release OpenCL resources

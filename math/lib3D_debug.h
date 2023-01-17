@@ -32,9 +32,11 @@ void printRay3(Ray3 r) {
 }
 
 void printPlane3(Plane3 p) {
-    printf("{off: %f", p.off);
-    printf(", n:");
+    printf("{n:");
     printVector3(p.n);
+    printf(", p:");
+    printPoint3(p.p);
+    printf(", off: %f", p.off);
     printf("}");
 }
 
