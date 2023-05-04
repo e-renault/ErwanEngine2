@@ -1,7 +1,8 @@
-#ifndef COLOR_H_
-#define COLOR_H_
+#ifndef M_MQUATERNION_H_
+#define M_MQUATERNION_H_
 
 #ifndef FLT_MIN
+  #include <float.h>
   #include <math.h>
   #ifdef __APPLE__
     #include <OpenCL/opencl.h>
@@ -20,8 +21,11 @@
   #endif
 #endif
 
-typedef struct rgb {
-    EE_FLOAT r, g, b;
-} rgb;
+#include "mVector3.h"
 
-#endif //COLOR_H_
+typedef struct __attribute__ ((packed)) Quaternion {
+  EE_FLOAT val[4];
+} Quaternion;
+
+
+#endif // M_MQUATERNION_H_

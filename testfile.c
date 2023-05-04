@@ -101,16 +101,21 @@ int main(int argc, char *argv[]) {
     Ray3 r1 = {1, 2, 3, 2, 3, -1};
     printPlane3(pl2);printf(",\n");
     printRay3(r1);printf(",\n");
-    Point3 col1 = collisionRayPlane(pl2, r1);
+    float* k;
+    Point3 col1 = collisionRayPlane(pl2, r1, k);
 
     Vector3* hp2db = (Vector3*) &col1;
-    printVector3(*hp2db);printf("\n");
 
     int x_res = 3, y_res = 3;
-    frameRGB image = newFrame(x_res, y_res, 255);
-    setPixel(image, 1, 1, 0.5f);
+    frameRGB image = newFrame(x_res, y_res);
+    //setPixel(image, 1, 1, 0.5f);
     
-    generateImg(image, "color_test");
+    //generateImg(image, "color_test");
+
+    Vector3 v15 = {0.5, 0, -0.5};
+    Vector3 unit = {0, 1, 0};
+    float tetha = 3.1415;
+    rotateAround(v15, unit, tetha);
 
     return 1;
 }

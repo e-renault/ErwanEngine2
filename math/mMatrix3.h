@@ -85,60 +85,20 @@ Vector3 multiply(Matrix3 m, Vector3 v) {
 }
 
 //TODO: paralellize
-Vector3 rotateX(Vector3 v, EE_FLOAT tetha) {
-        Vector3 ret;
+Vector3 rotateAround(Vector3 v, Vector3 unit, EE_FLOAT tetha) {
+    Vector3 ret;
+    float costetha = cos(tetha);
 
-    ret.x = 1 * v.x
-            + 0 * v.y
-            + 0 * v.z;
-
-    ret.y = 0 * v.x
-            + cos(tetha) * v.y
-            + -sin(tetha) * v.z;
-
-    ret.z = 0 * v.x
-            + sin(tetha) * v.y
-            + cos(tetha) * v.z;
-
+    Vector3 p1 = scale_vector3(costetha, v);
+    Vector3 p2 = scale_vector3((1-costetha) * dotProduct(v, unit), unit);
+    Vector3 p3 = scale_vector3(sin(tetha), crossProduct(unit, v));
+    
+    //add up all
+    ret = add_vector3(add_vector3(p1,p2), p3);
+    
     return ret;
 }
 
-//TODO: paralellize
-Vector3 rotateY(Vector3 v, EE_FLOAT tetha) {
-        Vector3 ret;
 
-    ret.x = cos(tetha) * v.x
-            + 0 * v.y
-            + sin(tetha) * v.z;
-
-    ret.y = 0 * v.x
-            + 1 * v.y
-            + 0 * v.z;
-
-    ret.z = -sin(tetha) * v.x
-            + 0 * v.y
-            + cos(tetha) * v.z;
-
-    return ret;
-}
-
-//TODO: paralellize
-Vector3 rotateZ(Vector3 v, EE_FLOAT tetha) {
-        Vector3 ret;
-
-    ret.x = cos(tetha) * v.x
-            + -sin(tetha) * v.y
-            + 0 * v.z;
-
-    ret.y = sin(tetha) * v.x
-            + cos(tetha) * v.y
-            + 0 * v.z;
-
-    ret.z = 0 * v.x
-            + 0 * v.y
-            + 1 * v.z;
-
-    return ret;
-}
 
 #endif // M_MATRIX3_H_

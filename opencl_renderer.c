@@ -1,7 +1,9 @@
+//gcc opencl_renderer.c -o demo -lm -lOpenCL -lpthread -lGL -lglut
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h> //malloc
 #include <math.h>
+#include <pthread.h>
 #include <sys/time.h>
 
 #include <GL/gl.h>
@@ -33,11 +35,9 @@
 #define ERROR_MSG "(Error)"
 
 
-const unsigned int x_res = 400;
-const unsigned int y_res = 300;
-float* sharedData;//displayed data buffer
-int frame, time, timebase;//used for FPS counter
-
+const unsigned int x_res = 800;
+const unsigned int y_res = 600;
+cl_float sharedData[600][800][3];
 
 char* load_program_source(const char *filename, cl_int* status);
 char* load_program_source(const char *filename, cl_int* status_ret) {
@@ -133,9 +133,10 @@ cl_kernel initKernelProgram(cl_uint numDevices, cl_device_id* devices, cl_contex
 
 void display();
 void display(){
+    static int time = 0, frame = 0, timebase = 0;//used for FPS counter
+
     glClearColor( 0, 0, 0, 1 );
     glClear( GL_COLOR_BUFFER_BIT );
-
 
     //FPS Counter
     frame++;
@@ -152,54 +153,38 @@ void display(){
     glutPostRedisplay();
 }
 
-int main(int argc, char *argv[]) {
-    cl_int status;
-    cl_int res, x, y, i;
-    
-    /** Init datas **/
-    if (DEBUG_INFO) printf(" ### Starting program, creating datas ###");
-    
+void* start_glut(void *vargp) {
     //init GLUT
-    glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
     glutInitWindowSize(x_res, y_res);
     glutCreateWindow("ErwanEngine2.0");
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-    //GLUT FPS counter
-    frame=0;time=0;timebase=0;
 
-    //scene build
-    res = x_res * y_res;
-    Point3 cam_coordinate = {0.2, 0.5, 2.5};
-    Vector3 cam_lookat = {0.20, 0, -1};
-    cl_int nbTriangles = 11;
-    Triangle3* triangles = (Triangle3*) calloc(nbTriangles, sizeof(Triangle3));
+    //display loop
+    glutDisplayFunc(display);
+    glutMainLoop();
+}
 
-    Point3 p000 = {0, 0, 0};
-    Point3 p100 = {1, 0, 0};
-    Point3 p110 = {1, 1, 0};
-    Point3 p010 = {0, 1, 0};
-    Point3 p001 = {0, 0, 1};
-    Point3 p101 = {1, 0, 1};
-    Point3 p111 = {1, 1, 1};
-    Point3 p011 = {0, 1, 1};
+int main(int argc, char *argv[]) {
+    cl_int status;
+    cl_int res, x, y, i;
+    //sharedData = calloc(x_res*y_res*3, sizeof(float));//displayed data buffer
+    
+    /** Init datas **/
+    if (DEBUG_INFO) printf(" ### Starting program, creating datas, starting threads ###");
+    
+    pthread_t glut_thread_id;
+    printf("Start glut thread\n");
+    glutInit(&argc, argv);
+    status = pthread_create(&glut_thread_id, NULL, start_glut, NULL);
+    if (DEBUG_INFO) printf("%s Creating GLUT thread\n", (status == 1)? SUCCESS_MSG:(ERROR_MSG));
 
-    Point3 pla = {-0.001, -150, -100};
-    Point3 plb = {-0.001, 50, -100};
-    Point3 plc = {-0.001, 50, 100};
 
-    triangles[0] = newTriangle3(pla, plb, plc);
-    triangles[10] = newTriangle3(p000, p100, p110);
-    triangles[1] = newTriangle3(p000, p010, p110);
-    triangles[2] = newTriangle3(p100, p101, p111);
-    triangles[3] = newTriangle3(p100, p110, p111);
-    triangles[4] = newTriangle3(p010, p110, p111);
-    triangles[5] = newTriangle3(p010, p011, p111);
-    triangles[6] = newTriangle3(p000, p100, p101);
-    triangles[7] = newTriangle3(p000, p101, p001);
-    triangles[8] = newTriangle3(p000, p001, p011);
-    triangles[9] = newTriangle3(p000, p010, p011);
+    
+
+
+
 
 
 
@@ -294,26 +279,6 @@ int main(int argc, char *argv[]) {
     cl_command_queue cmdQueue = clCreateCommandQueueWithProperties(context, devices[USE_DEVICE_ID], 0, &status);
     if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create queue\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
-    // STEP 3: Create device buffers
-    // STEP 4: Write host data to device buffers
-    if (DEBUG_SETUP_INFO) printf("\nSTEP 3: Create device buffers & STEP 4: Write host data to device buffers\n");
-    
-    cl_mem z_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, res * sizeof(cl_float), NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create buffers 1\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    //status = clEnqueueWriteBuffer(cmdQueue, z_buffer, CL_TRUE, 0, res * sizeof(cl_float), zbuffer_ret, 0, NULL, NULL);
-    //if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Write buffers 1\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-    cl_mem triangle_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nbTriangles * sizeof(Triangle3), NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create buffers 2\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    status = clEnqueueWriteBuffer(cmdQueue, triangle_buffer, CL_TRUE, 0, nbTriangles * sizeof(Triangle3), triangles, 0, NULL, NULL);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Write buffers 2\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-    //TODO: could be set as write only
-    cl_mem output_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, res * sizeof(rgb), NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create buffers output\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    //status = clEnqueueWriteBuffer(cmdQueue, output_buffer, CL_TRUE, 0, res * sizeof(rgb), triangles, 0, NULL, NULL);
-    //if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Write buffers 2\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
 
 
 
@@ -351,113 +316,213 @@ int main(int argc, char *argv[]) {
     free(devices);
 
 
-
-
-    // STEP 9: Set the kernel arguments
-    if (DEBUG_SETUP_INFO) printf("\nSTEP 9: Set the kernel arguments\n");
-
-    status = clSetKernelArg(kernel, 0, sizeof(cl_int), (void*) &x_res);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 0\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-    status = clSetKernelArg(kernel, 1, sizeof(cl_int), (void*) &y_res);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 1\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-    status = clSetKernelArg(kernel, 2, sizeof(Point3), (void*) &cam_coordinate);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 2\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-    status = clSetKernelArg(kernel, 3, sizeof(Vector3), (void*) &cam_lookat);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 3\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-    status = clSetKernelArg(kernel, 4, sizeof(cl_int), (void*) &nbTriangles);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 4\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-    status = clSetKernelArg(kernel, 5, sizeof(cl_mem), (void*) &triangle_buffer);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 5\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-    status = clSetKernelArg(kernel, 6, sizeof(cl_mem), (void*) &z_buffer);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 6\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-    status = clSetKernelArg(kernel, 7, sizeof(cl_mem), (void*) &output_buffer);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 7\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
+    //TODO make this mode dynamic
+    cl_int nbTriangles = 11;
+    res = x_res * y_res;
 
     
-    // STEP 10: Enqueue the kernel for execution
-    if (DEBUG_SETUP_INFO)  printf("\nSTEP 10: Enqueue the kernel for execution\n");
-    fflush(stdout);
+    // STEP 3: Create device buffers
+    if (DEBUG_SETUP_INFO) printf("\nSTEP 3: Create device buffers\n");
     
-    struct timeval stop, start;
-    gettimeofday(&start, NULL);
-
-    size_t globalWorkSize[2]={x_res, y_res};
-    status = clEnqueueNDRangeKernel( cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
-
-    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s call\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    switch(status) {
-        case CL_INVALID_PROGRAM_EXECUTABLE:printf("CL_INVALID_PROGRAM_EXECUTABLE\n");break;
-        case CL_INVALID_COMMAND_QUEUE:printf("CL_INVALID_COMMAND_QUEUE\n");break;
-        case CL_INVALID_KERNEL:printf("CL_INVALID_KERNEL\n");break;
-        case CL_INVALID_CONTEXT:printf("CL_INVALID_CONTEXT\n");break;
-        case CL_INVALID_KERNEL_ARGS:printf("CL_INVALID_KERNEL_ARGS\n");break;
-        case CL_INVALID_WORK_DIMENSION:printf("CL_INVALID_WORK_DIMENSION\n");break;
-        case CL_INVALID_GLOBAL_WORK_SIZE:printf("CL_INVALID_GLOBAL_WORK_SIZE\n");break;
-        case CL_INVALID_GLOBAL_OFFSET:printf("CL_INVALID_GLOBAL_OFFSET\n");break;
-        case CL_INVALID_WORK_GROUP_SIZE:printf("CL_INVALID_WORK_GROUP_SIZE\n");break;
-        case CL_INVALID_WORK_ITEM_SIZE:printf("CL_INVALID_WORK_ITEM_SIZE\n");break;
-        case CL_MISALIGNED_SUB_BUFFER_OFFSET:printf("CL_MISALIGNED_SUB_BUFFER_OFFSET\n");break;
-        case CL_INVALID_IMAGE_SIZE:printf("CL_INVALID_IMAGE_SIZE\n");break;
-        case CL_IMAGE_FORMAT_NOT_SUPPORTED:printf("CL_IMAGE_FORMAT_NOT_SUPPORTED\n");break;
-        case CL_OUT_OF_RESOURCES:printf("CL_OUT_OF_RESOURCES\n");break;
-        case CL_MEM_OBJECT_ALLOCATION_FAILURE:printf("CL_MEM_OBJECT_ALLOCATION_FAILURE\n");break;
-        case CL_INVALID_EVENT_WAIT_LIST:printf("CL_INVALID_EVENT_WAIT_LIST\n");break;
-        case CL_INVALID_OPERATION:printf("CL_INVALID_OPERATION\n");break;
-        case CL_OUT_OF_HOST_MEMORY:printf("CL_OUT_OF_HOST_MEMORY\n");break;
-    }
+    cl_mem z_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, res * sizeof(cl_float), NULL, &status);
+    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create buffers 1\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
-    clFinish(cmdQueue);
+    cl_mem triangle_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nbTriangles * sizeof(Triangle3), NULL, &status);
+    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create buffers 2\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
-    gettimeofday(&stop, NULL);
-    printf("took %lu us\n", (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec); 
-    
-    
-    // STEP 12: Read the output buffer back to the host
-    if (DEBUG_RUN_INFO) printf("\nSTEP 12: Read the output buffer back to the host\n");
+    //TODO: could be set as write only
+    cl_mem output_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, res * sizeof(rgb), NULL, &status);
+    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create buffers output\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
     rgb* output_buffer_ret = (rgb*) calloc(res, sizeof(rgb));
-    status = clEnqueueReadBuffer(cmdQueue, output_buffer, CL_TRUE, 0, res *sizeof(rgb), output_buffer_ret, 0, NULL,NULL);
-    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Read results\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-
     cl_float* zbuffer_ret = (cl_float*) calloc(res, sizeof(cl_float));
-    status = clEnqueueReadBuffer(cmdQueue, z_buffer, CL_TRUE, 0, res *sizeof(int), zbuffer_ret, 0, NULL,NULL);
-    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Read results\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+
+
+
+
+    Triangle3* triangles;
+
+    do {
+        struct timeval time;
+        gettimeofday(&time, NULL);
+
+        float _sec = ((float) time.tv_usec/1000000) + time.tv_sec % 100;
+        float _secmod = _sec / 4;
+        float _trunksecmod = _secmod - truncf(_secmod);
+        float _rad = _trunksecmod * 2 * 3.14;
+        float alphaz = sin(_rad) * 0.2f;
+        float alphax = sin(_rad);
+        float alphay = cos(_rad);
+
+        //scene build
+        Point3 cam_coordinate = {0.5, 0.2, 2.5};
+        Vector3 cam_lookat = {0, 0.2, -1};
+        triangles = (Triangle3*) calloc(nbTriangles, sizeof(Triangle3));
+
+        Point3 p000 = {-alphax,     alphaz+0,   -alphay};
+        Point3 p100 = {alphax,      alphaz+0,   -alphay};
+        Point3 p110 = {alphax,      alphaz+1,   -alphay};
+        Point3 p010 = {-alphax,     alphaz+1,   -alphay};
+        Point3 p001 = {-alphax,     alphaz+0,   alphay};
+        Point3 p101 = {alphax,      alphaz+0,   alphay};
+        Point3 p111 = {alphax,      alphaz+1,   alphay};
+        Point3 p011 = {-alphax,     alphaz+1,   alphay};
+
+        Point3 pla = {-150, -0.00, -100};
+        Point3 plb = {50, -0.00, -100};
+        Point3 plc = {50, -0.00, 100};
+
+        triangles[0] = newTriangle3(pla, plb, plc);
+        triangles[10] = newTriangle3(p000, p100, p110);
+        triangles[1] = newTriangle3(p000, p010, p110);
+        triangles[2] = newTriangle3(p100, p101, p111);
+        triangles[3] = newTriangle3(p100, p110, p111);
+        triangles[4] = newTriangle3(p010, p110, p111);
+        triangles[5] = newTriangle3(p010, p011, p111);
+        triangles[6] = newTriangle3(p000, p100, p101);
+        triangles[7] = newTriangle3(p000, p101, p001);
+        triangles[8] = newTriangle3(p000, p001, p011);
+        triangles[9] = newTriangle3(p000, p010, p011);
+
+
+
+
+
+
+        
+
+
+
+
+        // STEP 4: Write host data to device buffers
+        if (DEBUG_SETUP_INFO) printf("\nSTEP 4: Write host data to device buffers\n");
+        
+        //status = clEnqueueWriteBuffer(cmdQueue, z_buffer, CL_TRUE, 0, res * sizeof(cl_float), zbuffer_ret, 0, NULL, NULL);
+        //if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Write buffers 1\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+        status = clEnqueueWriteBuffer(cmdQueue, triangle_buffer, CL_TRUE, 0, nbTriangles * sizeof(Triangle3), triangles, 0, NULL, NULL);
+        if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Write buffers 2\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+        //status = clEnqueueWriteBuffer(cmdQueue, output_buffer, CL_TRUE, 0, res * sizeof(rgb), triangles, 0, NULL, NULL);
+        //if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Write buffers 2\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+
+
+
+
+
+
+
+
+        // STEP 9: Set the kernel arguments
+        if (DEBUG_SETUP_INFO) printf("\nSTEP 9: Set the kernel arguments\n");
+
+        status = clSetKernelArg(kernel, 0, sizeof(cl_int), (void*) &x_res);
+        if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 0\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+        status = clSetKernelArg(kernel, 1, sizeof(cl_int), (void*) &y_res);
+        if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 1\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+        status = clSetKernelArg(kernel, 2, sizeof(Point3), (void*) &cam_coordinate);
+        if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 2\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+        status = clSetKernelArg(kernel, 3, sizeof(Vector3), (void*) &cam_lookat);
+        if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 3\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+        status = clSetKernelArg(kernel, 4, sizeof(cl_int), (void*) &nbTriangles);
+        if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 4\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+        status = clSetKernelArg(kernel, 5, sizeof(cl_mem), (void*) &triangle_buffer);
+        if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 5\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+        status = clSetKernelArg(kernel, 6, sizeof(cl_mem), (void*) &z_buffer);
+        if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 6\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+        status = clSetKernelArg(kernel, 7, sizeof(cl_mem), (void*) &output_buffer);
+        if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 7\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+
+
+
+
+        
+        // STEP 10: Enqueue the kernel for execution
+        if (DEBUG_SETUP_INFO)  printf("\nSTEP 10: Enqueue the kernel for execution\n");
+        fflush(stdout);
+        
+        struct timeval stop, start;
+        gettimeofday(&start, NULL);
+
+        size_t globalWorkSize[2]={x_res, y_res};
+        status = clEnqueueNDRangeKernel( cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
+
+        if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s call\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+        switch(status) {
+            case CL_INVALID_PROGRAM_EXECUTABLE:printf("CL_INVALID_PROGRAM_EXECUTABLE\n");break;
+            case CL_INVALID_COMMAND_QUEUE:printf("CL_INVALID_COMMAND_QUEUE\n");break;
+            case CL_INVALID_KERNEL:printf("CL_INVALID_KERNEL\n");break;
+            case CL_INVALID_CONTEXT:printf("CL_INVALID_CONTEXT\n");break;
+            case CL_INVALID_KERNEL_ARGS:printf("CL_INVALID_KERNEL_ARGS\n");break;
+            case CL_INVALID_WORK_DIMENSION:printf("CL_INVALID_WORK_DIMENSION\n");break;
+            case CL_INVALID_GLOBAL_WORK_SIZE:printf("CL_INVALID_GLOBAL_WORK_SIZE\n");break;
+            case CL_INVALID_GLOBAL_OFFSET:printf("CL_INVALID_GLOBAL_OFFSET\n");break;
+            case CL_INVALID_WORK_GROUP_SIZE:printf("CL_INVALID_WORK_GROUP_SIZE\n");break;
+            case CL_INVALID_WORK_ITEM_SIZE:printf("CL_INVALID_WORK_ITEM_SIZE\n");break;
+            case CL_MISALIGNED_SUB_BUFFER_OFFSET:printf("CL_MISALIGNED_SUB_BUFFER_OFFSET\n");break;
+            case CL_INVALID_IMAGE_SIZE:printf("CL_INVALID_IMAGE_SIZE\n");break;
+            case CL_IMAGE_FORMAT_NOT_SUPPORTED:printf("CL_IMAGE_FORMAT_NOT_SUPPORTED\n");break;
+            case CL_OUT_OF_RESOURCES:printf("CL_OUT_OF_RESOURCES\n");break;
+            case CL_MEM_OBJECT_ALLOCATION_FAILURE:printf("CL_MEM_OBJECT_ALLOCATION_FAILURE\n");break;
+            case CL_INVALID_EVENT_WAIT_LIST:printf("CL_INVALID_EVENT_WAIT_LIST\n");break;
+            case CL_INVALID_OPERATION:printf("CL_INVALID_OPERATION\n");break;
+            case CL_OUT_OF_HOST_MEMORY:printf("CL_OUT_OF_HOST_MEMORY\n");break;
+        }
     
+        clFinish(cmdQueue);
+        
+        gettimeofday(&stop, NULL);
+        //TODO: Check time
+        int sec = stop.tv_sec - start.tv_sec;
+        int milisec = (stop.tv_usec - start.tv_usec)/1000;
+        int microsec = (stop.tv_usec - start.tv_usec) %1000;
+        if (DEBUG_RUN_INFO) printf("took %lus %lums %luus\n", sec, milisec, microsec); 
+    
+    
+        // STEP 12: Read the output buffer back to the host
+        if (DEBUG_RUN_INFO) printf("\nSTEP 12: Read the output buffer back to the host\n");
+        
+        status = clEnqueueReadBuffer(cmdQueue, output_buffer, CL_TRUE, 0, res *sizeof(rgb), output_buffer_ret, 0, NULL,NULL);
+        if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Read results\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-    //image generation
-    frameRGB image = newFrame(x_res, y_res);
-    for (x = 0; x<x_res; x++) {
-        for (y = 0; y<y_res; y++) {
-            image.frame[y *x_res + x] = output_buffer_ret[y *x_res + x];
+        status = clEnqueueReadBuffer(cmdQueue, z_buffer, CL_TRUE, 0, res *sizeof(int), zbuffer_ret, 0, NULL,NULL);
+        if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Read results\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+
+
+
+
+        /**
+            //image generation
+            frameRGB image = newFrame(x_res, y_res);
+            for (x = 0; x<x_res; x++) {
+                for (y = 0; y<y_res; y++) {
+                    image.frame[y *x_res + x] = output_buffer_ret[y *x_res + x];
+                }
+            }
+            generateImg(image, "output");
+        */
+        //recover data
+        for( x = 0; x < x_res; ++x ) {
+            for( y = 0; y < y_res; ++y ) {
+                int pointer =       (y * x_res + x) * 3;
+                int inv_pointer =   (y * x_res + x);
+                sharedData[y][x][0] = output_buffer_ret[inv_pointer].r;
+                sharedData[y][x][1] = output_buffer_ret[inv_pointer].g;
+                sharedData[y][x][2] = output_buffer_ret[inv_pointer].b;
+            }
         }
-    }
-    generateImg(image, "output");
-
-    //recover data
-    float* mdata = calloc(x_res*y_res*3, sizeof(float));
-    for( x = 0; x < x_res; ++x ) {
-        for( y = 0; y < y_res; ++y ) {
-            int pointer =       (y * x_res + x) * 3;
-            int inv_pointer =   (y_res-y) * x_res + x;
-            mdata[pointer + 0] = output_buffer_ret[inv_pointer].r;
-            mdata[pointer + 1] = output_buffer_ret[inv_pointer].g;
-            mdata[pointer + 2] = output_buffer_ret[inv_pointer].b;
-        }
-    }
-    sharedData = mdata;
-
-    //display loop
-    glutDisplayFunc(display);
-    glutMainLoop();
+    } while(1);
     
 
     // STEP 13: Release OpenCL resources

@@ -69,6 +69,23 @@ Vector3 crossProduct(Vector3 v1, Vector3 v2) {
     return ret;
 }
 
+float dotProduct(Vector3 v1, Vector3 v2) {
+    float ret = v1.x * v2.x;
+    ret += v1.y * v2.y;
+    ret += v1.z * v2.z;
+    return ret;
+}
+
+Vector3 scale_vector3(float s, Vector3 v) {
+    Vector3 ret;
+
+    ret.x = s* v.x;
+    ret.y = s* v.y;
+    ret.z = s* v.z;
+
+    return ret;
+}
+
 EE_FLOAT getLength(Point3 p1, Point3 p2) {
     float d1 = p2.x - p1.x;
     float d2 = p2.y - p1.y;
@@ -90,7 +107,6 @@ Vector3 getNorm(Vector3 v) {
 
 Vector3 getNorm2(Vector3 v1, Vector3 v2) {
     Vector3 ret = crossProduct(v1,v2);
-    //TODO: renormalize (done)
     ret = getNorm(ret);
     return ret;
 }
