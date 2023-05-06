@@ -1,9 +1,6 @@
 #ifndef LIB3D_DEBUG_H_
 #define LIB3D_DEBUG_H_
 
-#ifndef FLT_MIN
-  #include <stdio.h>
-#endif
 #include "lib3D.h"
 
 void printPoint3(Point3 p) {

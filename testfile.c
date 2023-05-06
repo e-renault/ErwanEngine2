@@ -87,14 +87,14 @@ int main(int argc, char *argv[]) {
 
     Vector3 off2 = minus_vector3(*off1);
 
-    Vector3* hp2d = (Vector3*) &p2d;
-    Vector3* hp3d = (Vector3*) &p3d;
-    Vector3* hp4d = (Vector3*) &p4d;
+    Vector3 hp2d = toVector(p2d);
+    Vector3 hp3d = toVector(p3d);
+    Vector3 hp4d = toVector(p4d);
 
     printf("triangle corner in triangle 1:\n");
-    printVector3(multiply(t1.base, add_vector3(*hp2d, off2)));printf(",\n");
-    printVector3(multiply(t1.base, add_vector3(*hp3d, off2)));printf(",\n");
-    printVector3(multiply(t1.base, add_vector3(*hp4d, off2)));printf(",\n");
+    printVector3(multiply(t1.base, add_vector3(hp2d, off2)));printf(",\n");
+    printVector3(multiply(t1.base, add_vector3(hp3d, off2)));printf(",\n");
+    printVector3(multiply(t1.base, add_vector3(hp4d, off2)));printf(",\n");
 
     printf("\n");printf("\n");
     Plane3 pl2 = {0, 0, 0, 2, 3, -1, -7}; 

@@ -1,4 +1,11 @@
-//gcc opencl_renderer.c -o demo -lm -lOpenCL -lpthread -lGL -lglut
+//gcc opencl_renderer.c -o demo -lm -lOpenCL -lpthread -lGL -lglut 
+//-DX_RES=1920 -DY_RES=1080 -DDEBUG_INFO=1 -DDEBUG_SETUP_INFO=1 -DDEBUG_RUN_INFO=1 -DSHOW_FPS=1
+//cd /media/erenault/EXCHANGE/workspaces/ErwanEngine2/opencl/
+
+#define CL_TARGET_OPENCL_VERSION 300
+#define USE_DEVICE_ID 0
+#define USE_PLATFORM_ID 0
+
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h> //malloc
@@ -9,35 +16,147 @@
 #include <GL/gl.h>
 #include <GL/glut.h>
 #include <GL/glu.h>
-#include <stdio.h>
 
 #include "math/lib3D.h"
 #include "math/lib3D_debug.h"
 #include "render/image.h"
 #include "render/color.h"
+#include "scene/sceneLoader.h"
+#include "kernel/header.h"
 
-
-#define CL_TARGET_OPENCL_VERSION 300
-#ifdef __APPLE__
-  #include <OpenCL/opencl.h>
-#else
-  #include <CL/cl.h>
+#ifndef DEBUG_INFO
+    #define DEBUG_INFO 0
+#endif
+#ifndef DEBUG_SETUP_INFO
+    #define DEBUG_SETUP_INFO 0
+#endif
+#ifndef DEBUG_RUN_INFO
+    #define DEBUG_RUN_INFO 0
+#endif
+#ifndef SHOW_FPS
+    #define SHOW_FPS 1
 #endif
 
-#define USE_DEVICE_ID 0
-#define USE_PLATFORM_ID 0
-
-#define DEBUG_INFO 0
-#define DEBUG_SETUP_INFO 0
-#define DEBUG_RUN_INFO 0
-#define DEBUG_RUN_TIME 0
 #define SUCCESS_MSG "(Done)"
 #define ERROR_MSG "(Error)"
 
+#ifndef X_RES
+    #define X_RES 800
+#endif
+#ifndef Y_RES
+    #define Y_RES 600
+#endif
+#define RES X_RES*Y_RES
 
-const unsigned int x_res = 800;
-const unsigned int y_res = 600;
-cl_float sharedData[600][800][3];
+//TODO use argument ?
+#define MAX_NB_TRIANGLE 650
+
+//TODO relocate
+static rgb* output_buffer_ret;
+Point3 cam_coordinate = {0.0, 1.2, 2.5};
+Vector3 cam_lookat = {0, -0.1, -1};
+
+static int program_running_loop = 1;
+static int caracter_moved = 1;
+static int new_frame = 1;
+
+cl_platform_id* initPlatform();
+cl_platform_id* initPlatform() {
+    cl_int status; int i;
+    if (DEBUG_INFO) printf("\n\n ### HARDWARE INFORMATIONS ###\n\n");
+    
+    // STEP 1: Discover and initialize the platforms  
+    if (DEBUG_INFO) printf(" *** Platform info *** \n");
+    
+    // Calcul du nombre de plateformes
+    cl_uint numPlatforms = 0;  
+    status = clGetPlatformIDs(0, NULL, &numPlatforms);
+    if (status != CL_SUCCESS || DEBUG_INFO) printf("%s Number of platforms : [%d]\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG), numPlatforms);
+
+
+    // Allocation de l'espace
+    cl_platform_id* platforms = (cl_platform_id*) malloc(numPlatforms*sizeof(cl_platform_id));
+    if (platforms == NULL || DEBUG_INFO) printf("%s Memory platform allocation\n", (platforms != NULL)? SUCCESS_MSG:(ERROR_MSG));
+    
+
+    // Trouver les plateformes
+    status = clGetPlatformIDs(numPlatforms, platforms, NULL);
+    if (status != CL_SUCCESS || DEBUG_INFO) printf("%s Platforms list\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    if (DEBUG_INFO) {
+        char profile[1000], version[1000], name[1000], vendor[1000], extension[10000];
+        status = clGetPlatformInfo(platforms[USE_PLATFORM_ID], CL_PLATFORM_PROFILE, sizeof(profile), profile, NULL);
+        status = clGetPlatformInfo(platforms[USE_PLATFORM_ID], CL_PLATFORM_VERSION, sizeof(version), version, NULL);
+        status = clGetPlatformInfo(platforms[USE_PLATFORM_ID], CL_PLATFORM_NAME, sizeof(name), name, NULL);
+        status = clGetPlatformInfo(platforms[USE_PLATFORM_ID], CL_PLATFORM_VENDOR, sizeof(vendor), vendor, NULL);
+        status = clGetPlatformInfo(platforms[USE_PLATFORM_ID], CL_PLATFORM_EXTENSIONS, sizeof(extension), extension, NULL);
+        i=0;while (extension[i]) { if (extension[i] == ' ') extension[i]='\n'; i++;}
+        printf("%s Platform 0 infos : \n\t - profile : \t%s\n\t - version : \t%s\n\t - name : \t\t%s\n\t - vendor : \t%s\n\t - extensions : \n%s\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG), profile, version, name, vendor, extension);
+        switch(status) {
+            case CL_INVALID_PLATFORM:printf("CL_INVALID_PLATFORM\n");break;
+            case CL_INVALID_VALUE:printf("CL_INVALID_VALUE\n");break;
+        }
+    }
+    fflush(stdout);
+    return platforms;
+}
+
+cl_device_id* initDevice(cl_platform_id* platforms, cl_uint* numDevices);
+cl_device_id* initDevice(cl_platform_id* platforms, cl_uint* numDevices) {
+    cl_int status;int i;
+
+    // STEP 2: Discover and initialize the devices
+    if (DEBUG_INFO) printf("\n *** Device info ***\n");
+
+    // calcul du nombre de périphériques
+    status = clGetDeviceIDs(platforms[USE_PLATFORM_ID], CL_DEVICE_TYPE_ALL, 0, NULL, numDevices);
+    if (status != CL_SUCCESS || DEBUG_INFO) printf("%s Number of devices : [%i]\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG), *numDevices);
+
+    // Allocation de l'espace
+    cl_device_id* devices = (cl_device_id*)malloc(*numDevices*sizeof(cl_device_id));
+    if (devices == NULL || DEBUG_INFO) printf("%s Memory devices allocation\n", (devices != NULL)? SUCCESS_MSG:(ERROR_MSG));
+    
+    // Trouver les périphériques
+    status = clGetDeviceIDs(platforms[USE_PLATFORM_ID], CL_DEVICE_TYPE_ALL, *numDevices, devices, NULL);
+    if (status != CL_SUCCESS || DEBUG_INFO) printf("%s Devices list\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    
+    if (DEBUG_INFO) {
+        char Name[1000];
+        for (i=0; i<*numDevices; i++){
+            status = clGetDeviceInfo(devices[i], CL_DEVICE_NAME, sizeof(Name), Name, NULL);
+            printf("%s Device %d info : \n\t - Name: %s\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG), i, Name);
+        }
+    }
+    fflush(stdout);
+
+    return devices;
+}
+
+cl_context initContext(cl_uint numDevices, cl_device_id* devices);
+cl_context initContext(cl_uint numDevices, cl_device_id* devices) {
+    cl_int status;
+
+    if (DEBUG_SETUP_INFO) printf("\n\n ### SETUP CONFIG ###\n");
+    if (DEBUG_SETUP_INFO) printf("\nSTEP 1: Create a context\n");
+
+    // STEP 1: Create a context
+    cl_context context = clCreateContext(NULL, numDevices, devices, NULL, NULL, &status);
+    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create context\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    
+    return context;
+}
+
+cl_command_queue initQueue(cl_context context, cl_device_id* devices);
+cl_command_queue initQueue(cl_context context, cl_device_id* devices) {
+    cl_int status;
+
+    // STEP 2: Create a command queue
+    if (DEBUG_SETUP_INFO) printf("\nSTEP 2: Create a command queue\n");
+
+    cl_command_queue cmdQueue = clCreateCommandQueueWithProperties(context, devices[USE_DEVICE_ID], 0, &status);
+    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create queue\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+    return cmdQueue;
+}
 
 char* load_program_source(const char *filename, cl_int* status);
 char* load_program_source(const char *filename, cl_int* status_ret) {
@@ -65,14 +184,14 @@ char* load_program_source(const char *filename, cl_int* status_ret) {
     return source;
 }
 
-cl_kernel initKernelProgram(cl_uint numDevices, cl_device_id* devices, cl_context context, char* source);
-cl_kernel initKernelProgram(cl_uint numDevices, cl_device_id* devices, cl_context context, char* source) {
+cl_kernel initKernelProgram(cl_uint numDevices, cl_device_id* devices, cl_context context, char* source, char* function);
+cl_kernel initKernelProgram(cl_uint numDevices, cl_device_id* devices, cl_context context, char* source, char* function) {
     cl_int status;
         
     // STEP 5: load programm source
     if (DEBUG_SETUP_INFO) printf("\nSTEP 5: load programm source\n");
     
-    char* programSource = load_program_source("kernel/projection_kernel.cl", &status);
+    char* programSource = load_program_source(source, &status);
     if (status != CL_SUCCESS || DEBUG_INFO)  printf("%s Read cl programm\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
 
@@ -115,7 +234,8 @@ cl_kernel initKernelProgram(cl_uint numDevices, cl_device_id* devices, cl_contex
 
     if (DEBUG_SETUP_INFO) printf("\nSTEP 7: Create the kernel\n");
 
-    cl_kernel kernel = clCreateKernel(program, "simpleCast", &status);
+    // STEP 7: Create the kernel
+    cl_kernel kernel = clCreateKernel(program, function, &status);
     if (status != CL_SUCCESS || DEBUG_INFO) printf("%s Create kernels\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     switch(status) {
         case CL_INVALID_PROGRAM:printf("CL_INVALID_PROGRAM\n");break;
@@ -127,169 +247,6 @@ cl_kernel initKernelProgram(cl_uint numDevices, cl_device_id* devices, cl_contex
     }
 
     clReleaseProgram(program);
-    
-    return kernel;
-}
-
-void display();
-void display(){
-    static int time = 0, frame = 0, timebase = 0;//used for FPS counter
-
-    glClearColor( 0, 0, 0, 1 );
-    glClear( GL_COLOR_BUFFER_BIT );
-
-    //FPS Counter
-    frame++;
-	time=glutGet(GLUT_ELAPSED_TIME);
-	if (time - timebase > 1000) {
-        if (DEBUG_RUN_TIME) printf("FPS:%4.2f\n", frame*1000.0/(time-timebase));fflush(stdout);
-	 	timebase = time;
-		frame = 0;
-    }
-
-    //draw pixels
-    glDrawPixels( x_res, y_res, GL_RGB, GL_FLOAT, sharedData );
-    glutSwapBuffers();
-    glutPostRedisplay();
-}
-
-void* start_glut(void *vargp) {
-    //init GLUT
-    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
-    glutInitWindowSize(x_res, y_res);
-    glutCreateWindow("ErwanEngine2.0");
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-
-    //display loop
-    glutDisplayFunc(display);
-    glutMainLoop();
-}
-
-int main(int argc, char *argv[]) {
-    cl_int status;
-    cl_int res, x, y, i;
-    //sharedData = calloc(x_res*y_res*3, sizeof(float));//displayed data buffer
-    
-    /** Init datas **/
-    if (DEBUG_INFO) printf(" ### Starting program, creating datas, starting threads ###");
-    
-    pthread_t glut_thread_id;
-    printf("Start glut thread\n");
-    glutInit(&argc, argv);
-    status = pthread_create(&glut_thread_id, NULL, start_glut, NULL);
-    if (DEBUG_INFO) printf("%s Creating GLUT thread\n", (status == 1)? SUCCESS_MSG:(ERROR_MSG));
-
-
-    
-
-
-
-
-
-
-    if (DEBUG_INFO) printf("\n\n ### HARDWARE INFORMATIONS ###\n\n");
-    
-    // STEP 1: Discover and initialize the platforms  
-    if (DEBUG_INFO) printf(" *** Platform info *** \n");
-    
-    // Calcul du nombre de plateformes
-    cl_uint numPlatforms = 0;  
-    status = clGetPlatformIDs(0, NULL, &numPlatforms);
-    if (status != CL_SUCCESS || DEBUG_INFO) printf("%s Number of platforms : [%d]\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG), numPlatforms);
-
-
-    // Allocation de l'espace
-    cl_platform_id* platforms = (cl_platform_id*) malloc(numPlatforms*sizeof(cl_platform_id));
-    if (platforms == NULL || DEBUG_INFO) printf("%s Memory platform allocation\n", (platforms != NULL)? SUCCESS_MSG:(ERROR_MSG));
-    
-
-    // Trouver les plateformes
-    status = clGetPlatformIDs(numPlatforms, platforms, NULL);
-    if (status != CL_SUCCESS || DEBUG_INFO) printf("%s Platforms list\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    if (DEBUG_INFO) {
-        char profile[1000], version[1000], name[1000], vendor[1000], extension[10000];
-        status = clGetPlatformInfo(platforms[USE_PLATFORM_ID], CL_PLATFORM_PROFILE, sizeof(profile), profile, NULL);
-        status = clGetPlatformInfo(platforms[USE_PLATFORM_ID], CL_PLATFORM_VERSION, sizeof(version), version, NULL);
-        status = clGetPlatformInfo(platforms[USE_PLATFORM_ID], CL_PLATFORM_NAME, sizeof(name), name, NULL);
-        status = clGetPlatformInfo(platforms[USE_PLATFORM_ID], CL_PLATFORM_VENDOR, sizeof(vendor), vendor, NULL);
-        status = clGetPlatformInfo(platforms[USE_PLATFORM_ID], CL_PLATFORM_EXTENSIONS, sizeof(extension), extension, NULL);
-        i=0;while (extension[i]) { if (extension[i] == ' ') extension[i]='\n'; i++;}
-        printf("%s Platform 0 infos : \n\t - profile : \t%s\n\t - version : \t%s\n\t - name : \t\t%s\n\t - vendor : \t%s\n\t - extensions : \n%s\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG), profile, version, name, vendor, extension);
-        switch(status) {
-            case CL_INVALID_PLATFORM:printf("CL_INVALID_PLATFORM\n");break;
-            case CL_INVALID_VALUE:printf("CL_INVALID_VALUE\n");break;
-        }
-    }
-    fflush(stdout);
-    
-
-
-
-
-
-
-    
-    // STEP 2: Discover and initialize the devices
-    if (DEBUG_INFO) printf("\n *** Device info ***\n");
-
-    // calcul du nombre de périphériques
-    cl_uint numDevices = 0;
-    status = clGetDeviceIDs(platforms[USE_PLATFORM_ID], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
-    if (status != CL_SUCCESS || DEBUG_INFO) printf("%s Number of devices : [%i]\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG), numDevices);
-
-
-    // Allocation de l'espace
-    cl_device_id* devices = (cl_device_id*)malloc(numDevices*sizeof(cl_device_id));
-    if (devices == NULL || DEBUG_INFO) printf("%s Memory devices allocation\n", (devices != NULL)? SUCCESS_MSG:(ERROR_MSG));
-    
-    // Trouver les périphériques
-    status = clGetDeviceIDs(platforms[USE_PLATFORM_ID], CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
-    if (status != CL_SUCCESS || DEBUG_INFO) printf("%s Devices list\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    
-    if (DEBUG_INFO) {
-        char Name[1000];
-        for (i=0; i<numDevices; i++){
-            status = clGetDeviceInfo(devices[i], CL_DEVICE_NAME, sizeof(Name), Name, NULL);
-            printf("%s Device %d info : \n\t - Name: %s\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG), i, Name);
-        }
-    }
-    fflush(stdout);
-    free(platforms);
-
-
-
-
-
-
-
-
-
-    if (DEBUG_SETUP_INFO) printf("\n\n ### SETUP CONFIG ###\n");
-    if (DEBUG_SETUP_INFO) printf("\nSTEP 1: Create a context\n");
-
-    // STEP 1: Create a context
-    cl_context context = clCreateContext(NULL, numDevices, devices, NULL, NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create context\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    
-    
-    // STEP 2: Create a command queue
-    if (DEBUG_SETUP_INFO) printf("\nSTEP 2: Create a command queue\n");
-
-    cl_command_queue cmdQueue = clCreateCommandQueueWithProperties(context, devices[USE_DEVICE_ID], 0, &status);
-    if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create queue\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    
-
-
-
-
-
-
-
-    // STEP 5: load programm source
-    // STEP 6: Create and compile the program
-    // STEP 7: Create the kernel
-    cl_kernel kernel = initKernelProgram(numDevices, devices, context, "test");
 
     if (DEBUG_SETUP_INFO) {//disabeled cause unused.    
         // STEP 8: Configure the work-item structure
@@ -298,7 +255,7 @@ int main(int argc, char *argv[]) {
         status = clGetDeviceInfo(devices[USE_DEVICE_ID],CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &MaxGroup, NULL);
         if (status != CL_SUCCESS || DEBUG_SETUP_INFO)  {
             printf("%s Get device work group size\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-            printf(" - CL_DEVICE_MAX_WORK_GROUP_SIZE = %d\n", MaxGroup);
+            printf(" - CL_DEVICE_MAX_WORK_GROUP_SIZE = %ld\n", MaxGroup);
         }
 
         size_t infosize;
@@ -308,103 +265,176 @@ int main(int argc, char *argv[]) {
         status = clGetDeviceInfo(devices[USE_DEVICE_ID], CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(MaxItems), MaxItems, NULL);
         if (status != CL_SUCCESS || DEBUG_SETUP_INFO)  {
             printf("%s Get device work group item size\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-            printf(" - CL_DEVICE_MAX_WORK_ITEM_SIZES = (%d, %d, %d)\n", MaxItems[0], MaxItems[1], MaxItems[2]);
+            printf(" - CL_DEVICE_MAX_WORK_ITEM_SIZES = (%ld, %ld, %ld)\n", MaxItems[0], MaxItems[1], MaxItems[2]);
         }
     }
     
+    return kernel;
+}
+
+
+/**  DISPLAY SECTION  **/
+void display();
+void display(){
+    if (new_frame) {
+        new_frame=0;
+        
+        glClearColor( 0, 0, 0, 1 );
+        glClear( GL_COLOR_BUFFER_BIT );
+
+        //draw pixels
+        glDrawPixels( X_RES, Y_RES, GL_RGB, GL_FLOAT, output_buffer_ret );
+        glutSwapBuffers();
+    }
+    glutPostRedisplay();
+}
+
+void keyboard(unsigned char key, int xmouse, int ymouse);
+void keyboard(unsigned char key, int xmouse, int ymouse) {
+    Vector3 UP = {0,1,0};
+    Vector3 rightVector = crossProduct(cam_lookat, UP);
+    switch (key) {
+        case 'z':
+            cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(0.1, cam_lookat)));
+            break;
+        case 's':
+            cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(-0.1f, cam_lookat)));
+            break;
+        case 'q':
+            cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(0.1, rightVector)));
+            break;
+        case 'd':
+            cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(-0.1f, rightVector)));
+            break;
+        case ' ':
+            cam_coordinate.y += 0.1;
+            break;
+        case 'e':
+            cam_coordinate.y -= 0.1;
+            break;
+        case 'm':
+            cam_lookat = rotateAround(cam_lookat, UP, 0.1f);
+            break;
+        case 'k':
+            cam_lookat = rotateAround(cam_lookat, UP, -0.1f);
+            break;
+        case 'o':
+            cam_lookat = rotateAround(cam_lookat, rightVector, 0.1f);
+            break;
+        case 'l':
+            cam_lookat = rotateAround(cam_lookat, rightVector, -0.1f);
+            break;
+        case 'x':
+            program_running_loop = 0;
+            break;
+        default:
+            break;
+    }
+    caracter_moved = 1;
+}
+
+void* start_glut(void *vargp);
+void* start_glut(void *vargp) {
+    printf("GLUT Start\n");
+    //init GLUT
+    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
+    glutInitWindowSize(X_RES, Y_RES);
+    glutCreateWindow("ErwanEngine2.0");
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+    //display loop
+    glutDisplayFunc(display);
+    glutKeyboardFunc(keyboard);
+    glutMainLoop();
+    program_running_loop = 0;
+    printf("GLUT Exit\n");
+}
+
+
+
+int main(int argc, char *argv[]) {
+    cl_int status;
+    cl_int x, y, i;
+    
+    /** Init datas **/
+    if (DEBUG_INFO) printf(" ### Starting program, creating datas, starting threads ###");
+    
+    pthread_t glut_thread_id;
+    glutInit(&argc, argv);
+    status = pthread_create(&glut_thread_id, NULL, start_glut, NULL);
+    if (DEBUG_INFO) printf("%s Creating GLUT thread\n", (status == 1)? SUCCESS_MSG:(ERROR_MSG));
+
+
+
+    cl_platform_id* platforms = initPlatform();
+
+    cl_uint numDevices = 0;
+    cl_device_id* devices = initDevice(platforms, &numDevices);
+    free(platforms);
+
+    cl_context context = initContext(numDevices, devices);
+    
+    cl_command_queue cmdQueue = initQueue(context, devices);
+
+    cl_kernel kernel = initKernelProgram(numDevices, devices, context, "kernel/projection_kernel.cl", "simpleCast");
     clReleaseContext(context);
     free(devices);
 
-
-    //TODO make this mode dynamic
-    cl_int nbTriangles = 11;
-    res = x_res * y_res;
 
     
     // STEP 3: Create device buffers
     if (DEBUG_SETUP_INFO) printf("\nSTEP 3: Create device buffers\n");
     
-    cl_mem z_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, res * sizeof(cl_float), NULL, &status);
+    cl_mem z_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, RES * sizeof(cl_float), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create buffers 1\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
-    cl_mem triangle_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nbTriangles * sizeof(Triangle3), NULL, &status);
+    cl_mem triangle_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, MAX_NB_TRIANGLE * sizeof(Triangle3), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create buffers 2\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
     //TODO: could be set as write only
-    cl_mem output_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, res * sizeof(rgb), NULL, &status);
+    cl_mem output_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, RES * sizeof(rgb), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Create buffers output\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
-    rgb* output_buffer_ret = (rgb*) calloc(res, sizeof(rgb));
-    cl_float* zbuffer_ret = (cl_float*) calloc(res, sizeof(cl_float));
+    output_buffer_ret = (rgb*) calloc(RES, sizeof(rgb));
+    cl_float* zbuffer_ret = (cl_float*) calloc(RES, sizeof(cl_float));
 
 
 
+    //scene build
+    Triangle3* triangles = (Triangle3*) calloc(MAX_NB_TRIANGLE, sizeof(Triangle3));
+    cl_int real_nb_triangles = 0;
 
+    if (argc > 1) { //load scene if provided
+        char path[500] = "/media/erenault/EXCHANGE/workspaces/ErwanEngine2/opencl/scene/";
+        strcat(path, argv[1]);
+        printf("Loading : %s\n", path);
+        Point3 points[400];
+        char scene_name[50];
+        char object[50];
+        real_nb_triangles = loadSceneFromFile(path, points, triangles, scene_name, object);
+    }
+    
 
-    Triangle3* triangles;
-
+    int frame = 0, timebase = 0;//used for FPS counter
     do {
-        struct timeval time;
-        gettimeofday(&time, NULL);
-
-        float _sec = ((float) time.tv_usec/1000000) + time.tv_sec % 100;
-        float _secmod = _sec / 4;
-        float _trunksecmod = _secmod - truncf(_secmod);
-        float _rad = _trunksecmod * 2 * 3.14;
-        float alphaz = sin(_rad) * 0.2f;
-        float alphax = sin(_rad);
-        float alphay = cos(_rad);
-
-        //scene build
-        Point3 cam_coordinate = {0.5, 0.2, 2.5};
-        Vector3 cam_lookat = {0, 0.2, -1};
-        triangles = (Triangle3*) calloc(nbTriangles, sizeof(Triangle3));
-
-        Point3 p000 = {-alphax,     alphaz+0,   -alphay};
-        Point3 p100 = {alphax,      alphaz+0,   -alphay};
-        Point3 p110 = {alphax,      alphaz+1,   -alphay};
-        Point3 p010 = {-alphax,     alphaz+1,   -alphay};
-        Point3 p001 = {-alphax,     alphaz+0,   alphay};
-        Point3 p101 = {alphax,      alphaz+0,   alphay};
-        Point3 p111 = {alphax,      alphaz+1,   alphay};
-        Point3 p011 = {-alphax,     alphaz+1,   alphay};
-
-        Point3 pla = {-150, -0.00, -100};
-        Point3 plb = {50, -0.00, -100};
-        Point3 plc = {50, -0.00, 100};
-
-        triangles[0] = newTriangle3(pla, plb, plc);
-        triangles[10] = newTriangle3(p000, p100, p110);
-        triangles[1] = newTriangle3(p000, p010, p110);
-        triangles[2] = newTriangle3(p100, p101, p111);
-        triangles[3] = newTriangle3(p100, p110, p111);
-        triangles[4] = newTriangle3(p010, p110, p111);
-        triangles[5] = newTriangle3(p010, p011, p111);
-        triangles[6] = newTriangle3(p000, p100, p101);
-        triangles[7] = newTriangle3(p000, p101, p001);
-        triangles[8] = newTriangle3(p000, p001, p011);
-        triangles[9] = newTriangle3(p000, p010, p011);
-
-
-
-
-
-
+        if (argc == 1) { //default if no scene loaded (bouncing square)
+            struct timeval time;
+            gettimeofday(&time, NULL);
+            float _sec = ((float) time.tv_usec/1000000) + time.tv_sec % 100;
+            real_nb_triangles = loadCubeScene(_sec, triangles);
+        }
         
-
-
-
 
         // STEP 4: Write host data to device buffers
         if (DEBUG_SETUP_INFO) printf("\nSTEP 4: Write host data to device buffers\n");
         
-        //status = clEnqueueWriteBuffer(cmdQueue, z_buffer, CL_TRUE, 0, res * sizeof(cl_float), zbuffer_ret, 0, NULL, NULL);
+        //status = clEnqueueWriteBuffer(cmdQueue, z_buffer, CL_TRUE, 0, RES * sizeof(cl_float), zbuffer_ret, 0, NULL, NULL);
         //if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Write buffers 1\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-        status = clEnqueueWriteBuffer(cmdQueue, triangle_buffer, CL_TRUE, 0, nbTriangles * sizeof(Triangle3), triangles, 0, NULL, NULL);
+        status = clEnqueueWriteBuffer(cmdQueue, triangle_buffer, CL_TRUE, 0, real_nb_triangles * sizeof(Triangle3), triangles, 0, NULL, NULL);
         if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Write buffers 2\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-        //status = clEnqueueWriteBuffer(cmdQueue, output_buffer, CL_TRUE, 0, res * sizeof(rgb), triangles, 0, NULL, NULL);
+        //status = clEnqueueWriteBuffer(cmdQueue, output_buffer, CL_TRUE, 0, RES * sizeof(rgb), triangles, 0, NULL, NULL);
         //if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Write buffers 2\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
 
@@ -418,9 +448,11 @@ int main(int argc, char *argv[]) {
         // STEP 9: Set the kernel arguments
         if (DEBUG_SETUP_INFO) printf("\nSTEP 9: Set the kernel arguments\n");
 
+        cl_int x_res = X_RES;
         status = clSetKernelArg(kernel, 0, sizeof(cl_int), (void*) &x_res);
         if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 0\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
+        cl_int y_res = Y_RES;
         status = clSetKernelArg(kernel, 1, sizeof(cl_int), (void*) &y_res);
         if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 1\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
@@ -430,7 +462,7 @@ int main(int argc, char *argv[]) {
         status = clSetKernelArg(kernel, 3, sizeof(Vector3), (void*) &cam_lookat);
         if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 3\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-        status = clSetKernelArg(kernel, 4, sizeof(cl_int), (void*) &nbTriangles);
+        status = clSetKernelArg(kernel, 4, sizeof(cl_int), (void*) &real_nb_triangles);
         if (status != CL_SUCCESS || DEBUG_SETUP_INFO) printf("%s Set arg 4\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
         status = clSetKernelArg(kernel, 5, sizeof(cl_mem), (void*) &triangle_buffer);
@@ -446,7 +478,7 @@ int main(int argc, char *argv[]) {
 
 
 
-        
+    //do {    
         // STEP 10: Enqueue the kernel for execution
         if (DEBUG_SETUP_INFO)  printf("\nSTEP 10: Enqueue the kernel for execution\n");
         fflush(stdout);
@@ -454,7 +486,7 @@ int main(int argc, char *argv[]) {
         struct timeval stop, start;
         gettimeofday(&start, NULL);
 
-        size_t globalWorkSize[2]={x_res, y_res};
+        size_t globalWorkSize[2]={X_RES, Y_RES};
         status = clEnqueueNDRangeKernel( cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
 
         if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s call\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
@@ -483,47 +515,40 @@ int main(int argc, char *argv[]) {
         
         gettimeofday(&stop, NULL);
         //TODO: Check time
-        int sec = stop.tv_sec - start.tv_sec;
-        int milisec = (stop.tv_usec - start.tv_usec)/1000;
-        int microsec = (stop.tv_usec - start.tv_usec) %1000;
+        unsigned long sec = stop.tv_sec - start.tv_sec;
+        unsigned long milisec = (stop.tv_usec - start.tv_usec)/1000;
+        unsigned long microsec = (stop.tv_usec - start.tv_usec) %1000;
         if (DEBUG_RUN_INFO) printf("took %lus %lums %luus\n", sec, milisec, microsec); 
-    
-    
+        
+        //FPS Counter
+        frame++;
+        if (start.tv_sec > timebase) {
+            if (SHOW_FPS) printf("FPS:%i   \r", frame);fflush(stdout);
+            timebase = start.tv_sec;
+            frame = 0;
+        }
+
         // STEP 12: Read the output buffer back to the host
         if (DEBUG_RUN_INFO) printf("\nSTEP 12: Read the output buffer back to the host\n");
         
-        status = clEnqueueReadBuffer(cmdQueue, output_buffer, CL_TRUE, 0, res *sizeof(rgb), output_buffer_ret, 0, NULL,NULL);
+        status = clEnqueueReadBuffer(cmdQueue, output_buffer, CL_TRUE, 0, RES *sizeof(rgb), output_buffer_ret, 0, NULL,NULL);
         if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Read results\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-        status = clEnqueueReadBuffer(cmdQueue, z_buffer, CL_TRUE, 0, res *sizeof(int), zbuffer_ret, 0, NULL,NULL);
+        status = clEnqueueReadBuffer(cmdQueue, z_buffer, CL_TRUE, 0, RES *sizeof(int), zbuffer_ret, 0, NULL,NULL);
         if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Read results\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-
-
-
-
-        /**
-            //image generation
-            frameRGB image = newFrame(x_res, y_res);
-            for (x = 0; x<x_res; x++) {
-                for (y = 0; y<y_res; y++) {
-                    image.frame[y *x_res + x] = output_buffer_ret[y *x_res + x];
-                }
-            }
-            generateImg(image, "output");
-        */
-        //recover data
-        for( x = 0; x < x_res; ++x ) {
-            for( y = 0; y < y_res; ++y ) {
-                int pointer =       (y * x_res + x) * 3;
-                int inv_pointer =   (y * x_res + x);
-                sharedData[y][x][0] = output_buffer_ret[inv_pointer].r;
-                sharedData[y][x][1] = output_buffer_ret[inv_pointer].g;
-                sharedData[y][x][2] = output_buffer_ret[inv_pointer].b;
-            }
-        }
-    } while(1);
+        new_frame = 1;
+    } while(program_running_loop);
     
+
+    //image generation
+    frameRGB image = newFrame(X_RES, Y_RES);
+    for (x = 0; x<X_RES; x++) {
+        for (y = 0; y<Y_RES; y++) {
+            image.frame[y *X_RES + x] = output_buffer_ret[y *X_RES + x];
+        }
+    }
+    generateImg(image, "output");
 
     // STEP 13: Release OpenCL resources
     if (DEBUG_SETUP_INFO) printf("\nSTEP 13: Release OpenCL resources\n");

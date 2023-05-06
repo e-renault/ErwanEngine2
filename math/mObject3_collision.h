@@ -1,25 +1,8 @@
 #ifndef M_OBJECT3_COLLISION_H_
 #define M_OBJECT3_COLLISION_H_
 
-#ifndef FLT_MIN
-  #include <float.h>
-  #include <math.h>
-  #ifdef __APPLE__
-    #include <OpenCL/opencl.h>
-  #else
-    #include <CL/cl.h>
-  #endif
-#endif
 
-#ifndef EE_FLOAT
-  #ifndef FLT_MIN
-    #define EE_FLOAT cl_float
-    #define EE_INT cl_int
-  #else
-    #define EE_FLOAT float
-    #define EE_INT int
-  #endif
-#endif
+#include "../kernel/header.h"
 
 #include "mObject3.h"
 
@@ -41,11 +24,9 @@ Point3 collisionRayPlane(Plane3 pl, Ray3 r, EE_FLOAT* t) {
 Vector3 getLocalPosition(Matrix3 b, Point3 o, Point3 p) {
     Vector3 ret;
 
-    Vector3* off1 = (Vector3*) &o;
-    Vector3 off = minus_vector3(*off1);
+    Vector3 off = minus_vector3(toVector(o));
 
-    Vector3* hp2d = (Vector3*) &p;
-    ret = multiply(b, add_vector3(*hp2d, off));
+    ret = multiply(b, add_vector3(toVector(p), off));
 
     return ret;
 }

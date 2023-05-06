@@ -1,39 +1,40 @@
 #ifndef M_VECTOR3_H_
 #define M_VECTOR3_H_
 
-#ifndef FLT_MIN
-  #include <math.h>
-  #ifdef __APPLE__
-    #include <OpenCL/opencl.h>
-  #else
-    #include <CL/cl.h>
-  #endif
-#endif
+#include "../kernel/header.h"
 
 
-#ifndef EE_FLOAT
-  #ifndef FLT_MIN
-    #define EE_ARCCOS(c) (acos(c)/M_PI)
-    #define EE_FLOAT cl_float
-    #define EE_INT cl_int
-  #else
-    #define EE_ARCCOS(c) (acospi(c))
-    #define EE_FLOAT float
-    #define EE_INT int
-  #endif
-#endif
-
-typedef struct __attribute__ ((packed)) Vector3 {
-  EE_FLOAT x, y, z;
+typedef union __attribute__ ((packed)) Vector3 {
+    struct {
+        EE_FLOAT x, y, z;
+    };
+    EE_FLOAT v[3];
 } Vector3;
 
-typedef struct __attribute__ ((packed)) Point3 {
-  EE_FLOAT x, y, z;
+typedef union __attribute__ ((packed)) Point3 {
+    struct {
+        EE_FLOAT x, y, z;
+    };
+    EE_FLOAT c[3];
 } Point3;
 
+//TODO this is an horrible conversion
+Vector3 static inline toVector(Point3 p) {
+    return *((Vector3*) &p);
+}
+
+//TODO this is an horrible conversion
+Point3 static inline toPoint(Vector3 v) {
+    return *((Point3*) &v);
+}
 
 Vector3 newVector(Point3 p1, Point3 p2) {
     Vector3 ret = {p2.x - p1.x, p2.y - p1.y, p2.z - p1.z};
+    return ret;
+}
+
+Point3 newPoint(EE_FLOAT x, EE_FLOAT y, EE_FLOAT z) {
+    Point3 ret = {x, y, z};
     return ret;
 }
 
@@ -76,7 +77,7 @@ float dotProduct(Vector3 v1, Vector3 v2) {
     return ret;
 }
 
-Vector3 scale_vector3(float s, Vector3 v) {
+Vector3 static inline scale_vector3(float s, Vector3 v) {
     Vector3 ret;
 
     ret.x = s* v.x;

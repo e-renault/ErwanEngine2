@@ -36,7 +36,7 @@ void generateImg(frameRGB image, char* location) {
     fprintf(ppmfile, "P3\n"); // Writing Magic Number to the File
     fprintf(ppmfile, "%d %d\n", image.x_res, image.y_res); 
     fprintf(ppmfile, "255\n"); // Writing the maximum value
-    int y;for (y = 0; y < image.y_res; y++) {
+    int y = image.y_res-1;for (; y-- ;) {
         int x;for (x = 0; x < image.x_res; x++) {
             rgb c = image.frame[y * image.x_res + x];
             fprintf(ppmfile, "%d %d %d\n", (int) (c.r *255),(int) (c.g *255),(int) (c.b *255));
