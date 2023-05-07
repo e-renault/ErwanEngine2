@@ -29,35 +29,29 @@ Point3 static inline toPoint(Vector3 v) {
 }
 
 Vector3 newVector(Point3 p1, Point3 p2) {
-    Vector3 ret = {p2.x - p1.x, p2.y - p1.y, p2.z - p1.z};
-    return ret;
-}
-
-Point3 newPoint(EE_FLOAT x, EE_FLOAT y, EE_FLOAT z) {
-    Point3 ret = {x, y, z};
-    return ret;
+    return (Vector3) {
+        .x = p2.x - p1.x, 
+        .y = p2.y - p1.y, 
+        .z = p2.z - p1.z
+    };
 }
 
 //TODO: paralellize
 Vector3 add_vector3(Vector3 v1, Vector3 v2) {
-    Vector3 ret;
-
-    ret.x = v1.x + v2.x;
-    ret.y = v1.y + v2.y;
-    ret.z = v1.z + v2.z;
-
-    return ret;
+    return (Vector3) {
+        .x = v1.x + v2.x,
+        .y = v1.y + v2.y,
+        .z = v1.z + v2.z
+    };
 }
 
 //TODO: paralellize
 Vector3 minus_vector3(Vector3 v) {
-    Vector3 ret;
-
-    ret.x = - v.x;
-    ret.y = - v.y;
-    ret.z = - v.z;
-
-    return ret;
+    return (Vector3) {
+        .x = - v.x,
+        .y = - v.y,
+        .z = - v.z
+    };
 }
 
 //TODO: paralellize
@@ -78,13 +72,11 @@ float dotProduct(Vector3 v1, Vector3 v2) {
 }
 
 Vector3 static inline scale_vector3(float s, Vector3 v) {
-    Vector3 ret;
-
-    ret.x = s* v.x;
-    ret.y = s* v.y;
-    ret.z = s* v.z;
-
-    return ret;
+    return (Vector3) {
+        .x = s* v.x,
+        .y = s* v.y,
+        .z = s* v.z
+    };
 }
 
 EE_FLOAT getLength(Point3 p1, Point3 p2) {
@@ -102,14 +94,15 @@ EE_FLOAT getLength2(Vector3 v) {
 
 Vector3 getNorm(Vector3 v) {
     float len = getLength2(v);
-    Vector3 ret = {v.x / len, v.y / len, v.z / len};
-    return ret;
+    return (Vector3) {
+        .x = v.x / len, 
+        .y = v.y / len,
+        .z = v.z / len
+    };
 }
 
 Vector3 getNorm2(Vector3 v1, Vector3 v2) {
-    Vector3 ret = crossProduct(v1,v2);
-    ret = getNorm(ret);
-    return ret;
+    return getNorm(crossProduct(v1,v2));
 }
 
 float getAngle(Vector3 v1, Vector3 v2) {

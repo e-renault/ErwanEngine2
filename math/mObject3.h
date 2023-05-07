@@ -31,15 +31,6 @@ typedef struct __attribute__ ((packed)) Ray3 {
   Vector3 v;
 } Ray3;
 
-Ray3 newRay3(Point3 p, Vector3 v) {
-    Ray3 ret;
-
-    ret.p = p;
-    ret.v = v;
-    
-    return ret;
-}
-
 
 //useless datas ?
 typedef struct __attribute__ ((packed)) Triangle3 {

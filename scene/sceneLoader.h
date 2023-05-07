@@ -7,11 +7,10 @@
 #include "../math/lib3D.h"
 
 int loadSceneFromFile(
-        char* path, 
-        Point3* points, 
+        char* path,  
+        int* nb_triangle,
         Triangle3* triangles,
-        char* scene_name,
-        char* object
+        Texture* textures
     ) {
 
     FILE *fptr;
@@ -24,9 +23,18 @@ int loadSceneFromFile(
     if (fptr == NULL)
         return 0;
 
+
+    Point3 points[400];
+    rgb color[400];
+    color[0]=(rgb){.r=1,.g=1,.b=1};
+    char scene_name[50];
+    char object[50];
+
+    int color_index = 1;
     int point_index = 0;
     int triangle_index = 0;
-
+    int _;
+    
     while ((len2 = getline(&line, &len1, fptr)) != -1) {
         identifier = strtok_r(line, " ", &rest);
         
@@ -37,22 +45,32 @@ int loadSceneFromFile(
         } else if (!strcmp(identifier, "v")) {
             float x, y, z;
             sscanf(rest, " %f %f %f", &x, &y, &z);
-            points[point_index] = newPoint(x, y, z);
+            points[point_index] = (Point3) {.c={x, y, z}};
             point_index++;
+            
+            //printPoint3(points[point_index-1]);printf("\n");
+        } else if (!strcmp(identifier, "vc")) {
+            float r, g, b;
+            sscanf(rest, " %f %f %f", &r, &g, &b);
+            color[color_index] = (rgb) {.r=r, .g=g, .b=b};
+            color_index++;
             
             //printPoint3(points[point_index-1]);printf("\n");
         } else if (!strcmp(identifier, "f")) {
             int v1, v2, v3;
-            int vt1, vt2, vt3;
+            int vt1=0, vt2=0, vt3=0;
             int vn1, vn2, vn3;
             int ret = sscanf(rest, " %d/%d/%d %d/%d/%d %d/%d/%d", &v1, &vt1, &vn1, &v2, &vt2, &vn2, &v3, &vt3, &vn3);
             if (ret != 9)
                 ret = sscanf(rest, " %d//%d %d//%d %d//%d", &v1, &vn1, &v2, &vn2, &v3, &vn3);
             if(ret != 6)
+                ret = sscanf(rest, " %d/%d/ %d/%d/ %d/%d/", &v1, &vt1, &v2, &vt2, &v3, &vt3);
+            if(ret != 6)
                 ret = sscanf(rest, " %d// %d// %d//", &v1, &v2, &v3);
             if(ret != 3)
                 ret = sscanf(rest, " %d %d %d", &v1, &v2, &v3);
 
+            textures[triangle_index] = (Texture) {.x_res = 1, .y_res = 1, .color1=color[vt1], .color2=color[vt2], .color3=color[vt3]};
             triangles[triangle_index] = newTriangle3(points[v1-1], points[v2-1], points[v3-1]);
             triangle_index++;
             
@@ -63,6 +81,7 @@ int loadSceneFromFile(
         }
         
     }
+    *nb_triangle = triangle_index;
 
     printf("loaded : %s -> triangles : %i, points : %i\n", object, triangle_index, point_index);
 
@@ -70,7 +89,7 @@ int loadSceneFromFile(
     if (line)
         free(line);
 
-    return triangle_index;
+    return *nb_triangle;
 }
 
 int loadCubeScene(float _sec, Triangle3* triangles) {
