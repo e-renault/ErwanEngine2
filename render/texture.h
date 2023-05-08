@@ -15,7 +15,7 @@ rgb getColor(Texture texture, EE_FLOAT cx, EE_FLOAT cy) {
     int x = cx * texture.x_res;
     int y = cy * texture.y_res;
 
-    rgb cbase = scaling_substractive(texture.color1, ((1-cx) + (1-cy))/2);
+    rgb cbase = scaling_substractive(texture.color1, 1-(cy+cx));
     rgb colorx = scaling_substractive(texture.color2, cx);
     rgb colory = scaling_substractive(texture.color3, cy);
 

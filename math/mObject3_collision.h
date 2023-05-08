@@ -7,18 +7,16 @@
 #include "mObject3.h"
 
 Point3 collisionRayPlane(Plane3 pl, Ray3 r, EE_FLOAT* t) {
-    Point3 ret;
-
     float div = (pl.n.x * r.v.x + pl.n.y * r.v.y + pl.n.z * r.v.z);
     if (div == 0) div = FLT_MIN;
     
     *t = -(pl.n.x * r.p.x + pl.n.y * r.p.y + pl.n.z * r.p.z + pl.off) / div;
 
-    ret.x = r.p.x + (*t) * r.v.x;
-    ret.y = r.p.y + (*t) * r.v.y;
-    ret.z = r.p.z + (*t) * r.v.z;
-
-    return ret;
+    return (Point3) {
+        .x = r.p.x + (*t) * r.v.x,
+        .y = r.p.y + (*t) * r.v.y,
+        .z = r.p.z + (*t) * r.v.z
+    };
 }
 
 Vector3 getLocalPosition(Matrix3 b, Point3 o, Point3 p) {
@@ -31,9 +29,8 @@ Vector3 getLocalPosition(Matrix3 b, Point3 o, Point3 p) {
     return ret;
 }
 
-int getCollisionRayTriangle(Triangle3 t, Ray3 r, Point3* global_point, Vector3* local_point, Vector3* normal) {
-    float k;
-    *global_point = collisionRayPlane(t.pl, r, &k);
+int getCollisionRayTriangle(Triangle3 t, Ray3 r, Point3* global_point, Vector3* local_point, Vector3* normal, EE_FLOAT* d) {
+    *global_point = collisionRayPlane(t.pl, r, d);
 
     *local_point = getLocalPosition(t.base, t.pl.p, *global_point);
 
@@ -43,7 +40,7 @@ int getCollisionRayTriangle(Triangle3 t, Ray3 r, Point3* global_point, Vector3* 
     int ret = 0 < local_point->x;
     ret &= 0 < local_point->y;
     ret &= local_point->x + local_point->y <= 1;
-    ret &= k > 0.000001;//prevent auto-detect collision
+    ret &= *d > 0.000001;//prevent auto-detect collision
 
     return ret;
 }

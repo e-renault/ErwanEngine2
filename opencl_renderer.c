@@ -1,5 +1,6 @@
-//gcc opencl_renderer.c -o opencl_renderer.out -lm -lOpenCL -lpthread -lGL -lglut -DX_RES=1920 -DY_RES=1080 -DDEBUG_GLOBAL_INFO=1 -DDEBUG_HARDWARE_INFO=1 -DDEBUG_KERNEL_INFO=1 -DDEBUG_RUN_INFO=1 -DSHOW_FPS=0
 //cd /media/erenault/EXCHANGE/workspaces/ErwanEngine2/opencl/
+// gcc opencl_renderer.c -o opencl_renderer.out -lm -lOpenCL -lpthread -lGL -lglut 
+//-DDEBUG_RUN_INFO=1
 
 #define CL_TARGET_OPENCL_VERSION 300
 #define USE_DEVICE_ID 0
@@ -8,16 +9,15 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h> //malloc
-#include <math.h>
 #include <pthread.h>
-#include <sys/time.h>
+#include <sys/time.h> //FPS counter
+#include <getopt.h>
 
 #include <GL/gl.h>
 #include <GL/freeglut.h>
 #include <GL/glu.h>
 
 #include "math/lib3D.h"
-#include "math/lib3D_debug.h"
 #include "render/image.h"
 #include "render/texture.h"
 #include "light/lightSource.h"
@@ -25,46 +25,38 @@
 #include "scene/sceneLoader.h"
 #include "kernel/header.h"
 
-#ifndef DEBUG_GLOBAL_INFO
-    #define DEBUG_GLOBAL_INFO 0
-#endif
-#ifndef DEBUG_KERNEL_INFO
-    #define DEBUG_KERNEL_INFO 0
-#endif
-#ifndef DEBUG_HARDWARE_INFO
-    #define DEBUG_HARDWARE_INFO 0
-#endif
 #ifndef DEBUG_RUN_INFO
     #define DEBUG_RUN_INFO 0
 #endif
-#ifndef SHOW_FPS
-    #define SHOW_FPS 1
-#endif
-#ifndef MAX_NB_TRIANGLE
-    #define MAX_NB_TRIANGLE 650
-#endif
-#define MAX_NB_LIGHTSOURCE 10
-#ifndef X_RES
-    #define X_RES 800
-#endif
-#ifndef Y_RES
-    #define Y_RES 600
-#endif
-#define FOV 70.0
-#define RES X_RES*Y_RES
+
+
 
 // constants
 static const char* SUCCESS_MSG = "(Done)";
 static const char* ERROR_MSG = "(Error)";
-static const char* scene_path = "/media/erenault/EXCHANGE/workspaces/ErwanEngine2/opencl/scene/data/";
 
 /* Global vars */
+// frame definition (default)
+static int MAX_NB_TRIANGLE = 650;
+static int Y_RES = 600;
+static int MAX_NB_LIGHTSOURCE = 10;
+static int X_RES = 800;
+static float FOV = 70.0;
+static int RES = 480000;
+static char scene_path[300] = "/media/erenault/EXCHANGE/workspaces/ErwanEngine2/opencl/scene/data/";
+static char obj_file_name[100] = "cheval.obj";
+static int SHOW_FPS = 0;
+static int DEBUG_GLOBAL_INFO = 0;
+static int DEBUG_KERNEL_INFO = 0;
+static int DEBUG_HARDWARE_INFO = 0;
+
 // scene description
 static rgb* output_render_buffer;
-static Point3 cam_coordinate = {0.0, 1.2, 2.5};
-static Vector3 cam_lookat = {0, -0.1, -1};
+static Point3 cam_coordinate = {0, 1, 2.5};
+static Vector3 cam_lookat = {0, 0, -1};
 static Vector3 sky_light_dir = {0.6, 0.7, 1};
-static Texture sky_light_texture = {.x_res = 1, .y_res = 1, .color1={.r=0.58, .g=0.78, .b=0.92}, .color2={.r=1, .g=0, .b=0}, .color3={.r=0, .g=0, .b=1}};
+//color1: horizon, color2: void, color3: sky
+static Texture sky_light_texture = {.x_res = 1, .y_res = 1, .color1={.r=0.58, .g=0.78, .b=0.92}, .color2={.r=1, .g=1, .b=1}, .color3={.r=0, .g=0, .b=1}};
 
 // program flow control
 static int program_running_loop = 1;
@@ -350,7 +342,7 @@ void keyboard(unsigned char key, int xmouse, int ymouse) {
 
 void* start_glut(void *vargp);
 void* start_glut(void *vargp) {
-    printf("GLUT Start\n");
+    if (DEBUG_GLOBAL_INFO) printf("GLUT Start\n");
     //init GLUT
     glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
     glutInitWindowSize(X_RES, Y_RES);
@@ -363,23 +355,104 @@ void* start_glut(void *vargp) {
     glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
     glutMainLoop();
     program_running_loop = 0;
-    printf("GLUT Exit\n");
+    if (DEBUG_GLOBAL_INFO) printf("GLUT Exit\n");
 }
 
 
+/** LOCAL FUNCTIONNALITIES **/
+void extract_params(int argc, char *argv[]);
+void extract_params(int argc, char *argv[]) {
+    int c;
+    int digit_optind = 0;
+
+    while (1) {
+        int this_option_optind = optind ? optind : 1;
+        int option_index = 0;
+        static struct option long_options[] = {
+            {"max_triangle",    required_argument, 0,  't' },
+            {"max_lightsource", required_argument, 0,  'l' },
+            {"xres",            required_argument, 0,  'x' },
+            {"yres",            required_argument, 0,  'y' },
+            {"fov",             required_argument, 0,  'f' },
+            {"file",            required_argument, 0,  'o' },
+            {"path",            required_argument, 0,  'p' },
+            {"FPS",             no_argument,       &SHOW_FPS,  1 },
+            {"GINFO",           no_argument,       &DEBUG_GLOBAL_INFO,  1 },
+            {"KINFO",           no_argument,       &DEBUG_KERNEL_INFO,  1 },
+            {"HINFO",           no_argument,       &DEBUG_HARDWARE_INFO,  1 },
+            {0,                 0,                 0,  0 }
+
+        };
+        c = getopt_long(argc, argv, "abc:d:012", long_options, &option_index);
+        if (c == -1) break;
+
+        switch (c) {
+            case 0:
+                printf("set %s", long_options[option_index].name);
+                if (optarg)
+                    printf(" to : %s", optarg);
+                printf("\n");
+                break;
+
+            case 't':
+                MAX_NB_TRIANGLE = atoi(optarg);
+                printf("MAX_NB_TRIANGLE set to '%i'\n", MAX_NB_TRIANGLE);
+                break;
+            case 'l':
+                MAX_NB_LIGHTSOURCE = atoi(optarg);
+                printf("MAX_NB_LIGHTSOURCE set to '%i'\n", MAX_NB_LIGHTSOURCE);
+                break;
+            case 'x':
+                X_RES = atoi(optarg);
+                printf("X_RES set to '%i'\n", X_RES);
+                break;
+            case 'y':
+                Y_RES = atoi(optarg);
+                printf("Y_RES set to '%i'\n", Y_RES);
+                break;
+            case 'f':
+                FOV = atof(optarg);
+                printf("FOV set to '%f'\n", FOV);
+                break;
+            case 'o':
+                strcpy(obj_file_name, optarg);
+                printf("obj_file_name set to '%s'\n", obj_file_name);
+                break;
+            case 'p':
+                strcpy(scene_path, optarg);
+                printf("scene_path set to '%s'\n", scene_path);
+                break;
+
+            case '?':
+                break;
+
+            default:
+                printf("?? getopt returned character code 0%o ??\n", c);
+        }
+    }
+
+    if (optind < argc) {
+        printf("non-option ARGV-elements: ");
+        while (optind < argc)
+            printf("%s ", argv[optind++]);
+        printf("\n");
+    }
+
+    RES = X_RES * Y_RES;
+}
 
 int main(int argc, char *argv[]) {
+    extract_params(argc, argv);
+    
+    if (DEBUG_GLOBAL_INFO) printf(" ### Starting program, creating datas, starting threads ###\n");
+    
     cl_int status;
     cl_int x, y, i;
-    
-    /** Init datas **/
-    if (DEBUG_GLOBAL_INFO) printf(" ### Starting program, creating datas, starting threads ###");
-    
+
     pthread_t glut_thread_id;
     glutInit(&argc, argv);
     status = pthread_create(&glut_thread_id, NULL, start_glut, NULL);
     if (DEBUG_GLOBAL_INFO) printf("%s Creating GLUT thread\n", (status == 1)? SUCCESS_MSG:(ERROR_MSG));
-
 
 
     cl_platform_id* platforms = init_platform();
@@ -395,7 +468,6 @@ int main(int argc, char *argv[]) {
     cl_kernel kernel = init_kernel_program(numDevices, devices, context, "kernel/cast_render_kernel.cl", "simpleCast");
     clReleaseContext(context);
     free(devices);
-
 
     
     // STEP 3: Create device buffers
@@ -427,18 +499,18 @@ int main(int argc, char *argv[]) {
     // init window
     cl_int x_res = X_RES;
     status = clSetKernelArg(kernel, 0, sizeof(cl_int), (void*) &x_res);
-    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set arg 0\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set X_RES\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
     cl_int y_res = Y_RES;
     status = clSetKernelArg(kernel, 1, sizeof(cl_int), (void*) &y_res);
-    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set arg 1\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set Y_RES\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
     cl_float fov = FOV;
     status = clSetKernelArg(kernel, 2, sizeof(cl_float), (void*) &fov);
-    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set arg 2\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set FOV\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
     status = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void*) &render_buffer);
-    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set arg 3\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set render_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
 
 
@@ -453,13 +525,12 @@ int main(int argc, char *argv[]) {
             cam_moved = 1;
             
             //scene build
-            if (argc > 1) { //TODO load scene if provided
-                char path[500] = "\0";
-                strcat(path, scene_path);
-                strcat(path, argv[1]);
-                printf("Loading : %s\n", path);
-                status = loadSceneFromFile(path, &real_nb_triangles, triangles, textures);
-            }
+            char path[500] = "\0";
+            strcat(path, scene_path);
+            strcat(path, obj_file_name);
+            if (DEBUG_GLOBAL_INFO) printf("Loading : %s\n", path);
+            status = loadSceneFromFile(path, &real_nb_triangles, triangles, textures, &real_nb_lights, lights);
+
 
             // STEP 4: Write host data to device buffers
             if (DEBUG_KERNEL_INFO) printf("\nSTEP 4: Write host data to device buffers\n");
@@ -473,27 +544,26 @@ int main(int argc, char *argv[]) {
             status = clEnqueueWriteBuffer(cmdQueue, lights_buffer, CL_TRUE, 0, real_nb_lights * sizeof(LightSource3), lights, 0, NULL, NULL);
             if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write light buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
         
-
             status = clSetKernelArg(kernel, 4, sizeof(cl_int), (void*) &real_nb_triangles);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set arg 4\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set real_nb_triangles*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
             status = clSetKernelArg(kernel, 5, sizeof(cl_mem), (void*) &triangles_buffer);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set arg 5\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set triangles_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
             status = clSetKernelArg(kernel, 6, sizeof(cl_mem), (void*) &textures_buffer);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set arg 6\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set textures_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
             status = clSetKernelArg(kernel, 7, sizeof(cl_int), (void*) &real_nb_lights);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set arg 7\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set real_nb_lights\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
             status = clSetKernelArg(kernel, 8, sizeof(cl_mem), (void*) &lights_buffer);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set arg 8\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set lights_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
             status = clSetKernelArg(kernel, 9, sizeof(Vector3), (void*) &sky_light_dir);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set arg 9\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set sky_light_dir\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
             status = clSetKernelArg(kernel, 10, sizeof(Texture), (void*) &sky_light_texture);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set arg 10\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set sky_light_texture\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
         }
 
@@ -501,10 +571,10 @@ int main(int argc, char *argv[]) {
             cam_moved = 0;
 
             status = clSetKernelArg(kernel, 11, sizeof(Point3), (void*) &cam_coordinate);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set arg 11\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_coordinate\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
             status = clSetKernelArg(kernel, 12, sizeof(Vector3), (void*) &cam_lookat);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set arg 12\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_lookat\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
         
             // STEP 10: Enqueue the kernel for execution
             if (DEBUG_RUN_INFO)  printf("\nSTEP 10: Enqueue the kernel for execution (new frame)\n");
@@ -560,11 +630,10 @@ int main(int argc, char *argv[]) {
 
         gettimeofday(&stop, NULL);
         //TODO: Check time
-        unsigned long sec = stop.tv_sec - start.tv_sec;
-        unsigned long milisec = (stop.tv_usec - start.tv_usec)/1000;
-        unsigned long microsec = (stop.tv_usec - start.tv_usec) %1000;
-        if (DEBUG_RUN_INFO) printf("took %lus %lums %luus\n", sec, milisec, microsec); 
-        
+        long int sec = stop.tv_sec - start.tv_sec;
+        long int milisec = (stop.tv_usec - start.tv_usec)/1000;
+        long int microsec = (stop.tv_usec - start.tv_usec) %1000;
+        if (DEBUG_RUN_INFO) printf("took %lis %lims %lius\n", sec, milisec, microsec); 
         
     } while(program_running_loop);
     

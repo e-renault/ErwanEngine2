@@ -29,7 +29,7 @@ frameRGB newFrame(int x_res, int y_res) {
 void generateImg(frameRGB image, char* location);
 void generateImg(frameRGB image, char* location) {
     FILE* ppmfile;
-    //TODO: file name based on houre
+    //TODO: file name based on hour
     char loc[100];
     sprintf(loc, "_output/%s.ppm", location);
     ppmfile = fopen(loc, "wb");
@@ -63,7 +63,7 @@ void generateImg(frameRGB image, char* location) {
         }
     }
     if (out_of_bound)
-        printf(" ##### /!\ Color out of bound (%i) !!! ##### \n", out_of_bound);
+        printf(" ##### /!\\ Color out of bound (%i) !!! ##### \n", out_of_bound);
 
     fclose(ppmfile);
 }

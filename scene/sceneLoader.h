@@ -5,12 +5,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../math/lib3D.h"
+#include "../light/lightSource.h"
+#include "../math/lib3D_debug.h"
 
 int loadSceneFromFile(
         char* path,  
         int* nb_triangle,
         Triangle3* triangles,
-        Texture* textures
+        Texture* textures,
+        int* nb_lights,
+        LightSource3* lights
     ) {
 
     FILE *fptr;
@@ -20,28 +24,29 @@ int loadSceneFromFile(
     char* identifier;
 
     fptr = fopen(path,"r");
-    if (fptr == NULL)
+    if (fptr == NULL) {
+        printf(" ##### /!\\ File not found ! ##### \n");
         return 0;
+    }
 
-
+    //TODO potential error
     Point3 points[400];
     rgb color[400];
     color[0]=(rgb){.r=1,.g=1,.b=1};
-    char scene_name[50];
-    char object[50];
+    char object[50][10] = {"missingno"};
 
     int color_index = 1;
     int point_index = 0;
+    int object_index = 0;
     int triangle_index = 0;
     int _;
     
     while ((len2 = getline(&line, &len1, fptr)) != -1) {
         identifier = strtok_r(line, " ", &rest);
         
-        if (!strcmp(identifier, "#")) {
-            sscanf(rest, " %s", scene_name);
-        } else if (!strcmp(identifier, "o")) {
-            sscanf(rest, " %s", object);
+        if (!strcmp(identifier, "o")) {
+            sscanf(rest, " %s", object[object_index]);
+            object_index++;
         } else if (!strcmp(identifier, "v")) {
             float x, y, z;
             sscanf(rest, " %f %f %f", &x, &y, &z);
@@ -49,6 +54,13 @@ int loadSceneFromFile(
             point_index++;
             
             //printPoint3(points[point_index-1]);printf("\n");
+        } else if (!strcmp(identifier, "vt")) {
+            float c1, c2;
+            sscanf(rest, " %f %f", &c1, &c2);
+            color[color_index] = (rgb) {.r=c1, .g=c2, .b=1-(c1+c2)};
+            color_index++;
+            
+            //printf("(%f, %f, %f)\n", color[color_index-1].r, color[color_index-1].r, color[color_index-1].r);
         } else if (!strcmp(identifier, "vc")) {
             float r, g, b;
             sscanf(rest, " %f %f %f", &r, &g, &b);
@@ -60,21 +72,20 @@ int loadSceneFromFile(
             int v1, v2, v3;
             int vt1=0, vt2=0, vt3=0;
             int vn1, vn2, vn3;
-            int ret = sscanf(rest, " %d/%d/%d %d/%d/%d %d/%d/%d", &v1, &vt1, &vn1, &v2, &vt2, &vn2, &v3, &vt3, &vn3);
-            if (ret != 9)
-                ret = sscanf(rest, " %d//%d %d//%d %d//%d", &v1, &vn1, &v2, &vn2, &v3, &vn3);
-            if(ret != 6)
-                ret = sscanf(rest, " %d/%d/ %d/%d/ %d/%d/", &v1, &vt1, &v2, &vt2, &v3, &vt3);
-            if(ret != 6)
-                ret = sscanf(rest, " %d// %d// %d//", &v1, &v2, &v3);
-            if(ret != 3)
-                ret = sscanf(rest, " %d %d %d", &v1, &v2, &v3);
+
+            int ret=0;
+            if (!ret) ret = 9==sscanf(rest, " %d/%d/%d %d/%d/%d %d/%d/%d", &v1, &vt1, &vn1, &v2, &vt2, &vn2, &v3, &vt3, &vn3);
+            if (!ret) ret = 6==sscanf(rest, " %d//%d %d//%d %d//%d", &v1, &vn1, &v2, &vn2, &v3, &vn3);
+            if (!ret) ret = 6==sscanf(rest, " %d/%d/ %d/%d/ %d/%d/", &v1, &vt1, &v2, &vt2, &v3, &vt3);
+            if (!ret) ret = 3==sscanf(rest, " %d// %d// %d//", &v1, &v2, &v3);
+            if (!ret) ret = 3==sscanf(rest, " %d %d %d", &v1, &v2, &v3);
+            if (!ret) printf("Error while parsing triangle [%i]\n",ret);
 
             textures[triangle_index] = (Texture) {.x_res = 1, .y_res = 1, .color1=color[vt1], .color2=color[vt2], .color3=color[vt3]};
             triangles[triangle_index] = newTriangle3(points[v1-1], points[v2-1], points[v3-1]);
             triangle_index++;
             
-            //printf("(%i, %i, %i)\n", v1, v2, v3);
+            //printf("[%i](%i, %i, %i)\n",ret, v1, v2, v3);
             //printTriangle3(triangles[triangle_index]);
         } else {
             //printf("[unidentified] {%s}\n", rest);
@@ -83,11 +94,30 @@ int loadSceneFromFile(
     }
     *nb_triangle = triangle_index;
 
-    printf("loaded : %s -> triangles : %i, points : %i\n", object, triangle_index, point_index);
+    printf("loaded : %s -> triangles : %i, points : %i, color : %i\n", object[0], triangle_index, point_index, color_index);
 
     fclose(fptr);
     if (line)
         free(line);
+
+    lights[(*nb_lights)++] = (LightSource3) {
+        .color = (rgb) {1,0,0},
+        .dir = (Vector3) {0,0,0},
+        .source = (Point3) {0,0.5,3},
+        .intensity = 10
+    };
+    lights[(*nb_lights)++] = (LightSource3) {
+        .color = (rgb) {0,1,0},
+        .dir = (Vector3) {0,0,0},
+        .source = (Point3) {2,0.5,1},
+        .intensity = 10
+    };
+    lights[(*nb_lights)++] = (LightSource3) {
+        .color = (rgb) {0,0,1},
+        .dir = (Vector3) {0,0,0},
+        .source = (Point3) {-2,0.5,1},
+        .intensity = 5
+    };
 
     return *nb_triangle;
 }
