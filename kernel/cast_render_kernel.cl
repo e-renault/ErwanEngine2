@@ -146,6 +146,6 @@ __kernel void simpleCast (
     /* Build up final render */
     rgb lignt_sum = synthese_additive(direct_light_buffer, scene_light_buffer);
     //final_outut_buffer[y*x_res + x] = scene_light_buffer; //neon render
-    final_outut_buffer[y*x_res + x] = min_color(direct_light_buffer, color_value_buffer);//only sun illum
-    //final_outut_buffer[y*x_res + x] = min_color(lignt_sum, color_value_buffer);//all in one render
+    //final_outut_buffer[y*x_res + x] = min_color(direct_light_buffer, color_value_buffer);//only sun illum
+    final_outut_buffer[y*x_res + x] = min_color(lignt_sum, color_value_buffer);//all in one render
 } 

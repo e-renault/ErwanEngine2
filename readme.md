@@ -26,7 +26,7 @@ Depending on you hardware, you could have to change DEVICE_ID and PLATFORM_ID in
 ## Compile
 You can use the command :
 ```
-$ gcc opencl_renderer.c -o opencl_renderer.out -lm -lOpenCL -lpthread -lGL -lglut
+$ gcc main.c -lm -lOpenCL -lpthread -lGL -lglut 
 ```
 
 optional: 
@@ -34,7 +34,7 @@ optional:
 
 ## Run
 ```
-./opencl_renderer.out [--optionnals arguments]
+./a.out [--optionnals arguments]
 ```
 
 optional:

@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include <string.h>
 #include "../math/lib3D.h"
 #include "../light/lightSource.h"
@@ -137,14 +138,28 @@ int loadSceneFromFile(
     return *nb_triangle;
 }
 
-int loadCubeScene(float _sec, Triangle3* triangles) {
+int loadCubeScene(
+        char* path,  
+        int* nb_triangle,
+        Triangle3* triangles,
+        Texture* textures,
+        int* nb_lights,
+        LightSource3* lights,
+        Point3* cam_coordinate,
+        Vector3* cam_lookat,
+        Vector3* sky_light_dir,
+        Texture* sky_light_texture
+    ) {
+
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    float _sec = ((float) time.tv_usec/1000000) + time.tv_sec % 100;
     float _secmod = _sec / 8;
     float _trunksecmod = _secmod - truncf(_secmod);
     float _rad = _trunksecmod * 2 * 3.14;
     float alphaz = sin(_rad) * 0.2f + 0.5f;
     float sin_alpha = sin(_rad) * 0.7f;
     float cos_alpha = cos(_rad) * 0.7f;
-
 
     Point3 pAL = {-sin_alpha,     alphaz,   -cos_alpha};
     Point3 pBL = {cos_alpha,      alphaz,   -sin_alpha};
@@ -177,7 +192,19 @@ int loadCubeScene(float _sec, Triangle3* triangles) {
     triangles[i++] = newTriangle3(pAU, pCU, pDU);
     triangles[i++] = newTriangle3(pAL, pBL, pCL);
     triangles[i++] = newTriangle3(pAL, pCL, pDL);
-    return i;
+
+    *nb_triangle = i;
+
+    for (;i--;) {
+        rgb col = {1, 1, 1};
+        textures[i] = (Texture) {
+            .color1=col, 
+            .color2=col, 
+            .color3=col
+        };
+    }
+
+    return *nb_triangle;
 }
 
 #endif //SCENE_LOADER_H_

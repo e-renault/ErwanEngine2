@@ -1,5 +1,5 @@
-//cd /media/erenault/EXCHANGE/workspaces/ErwanEngine2/opencl/
-// gcc opencl_renderer.c -o opencl_renderer.out -lm -lOpenCL -lpthread -lGL -lglut 
+// cd /media/erenault/EXCHANGE/workspaces/ErwanEngine2/opencl/
+// gcc main.c -lm -lOpenCL -lpthread -lGL -lglut
 // optional: -DDEBUG_RUN_INFO=1
 
 #define CL_TARGET_OPENCL_VERSION 300
@@ -65,6 +65,7 @@ static int program_running_loop = 1;
 static int scene_changed = 1;
 static int cam_moved = 1;
 static int new_frame = 1;
+static int cube_demo = 0;
 
 
 /**  OPENCL SECTION  **/
@@ -318,6 +319,7 @@ void keyboard(unsigned char key, int xmouse, int ymouse) {
         case 'h':sky_light_dir.y -=0.1;scene_changed = 1;break;
         case 'u':sky_light_dir.z +=0.1;scene_changed = 1;break;
         case 'j':sky_light_dir.z -=0.1;scene_changed = 1;break;
+        case 'r':cube_demo = !cube_demo; break;
         case 'x':
             program_running_loop = 0;
             glutLeaveMainLoop();
@@ -534,12 +536,27 @@ int main(int argc, char *argv[]) {
     do {
         struct timeval stop, start;
         gettimeofday(&start, NULL);
+        if (cube_demo) {
+            status = loadCubeScene(
+                path, 
+                &real_nb_triangles, 
+                triangles, 
+                textures, 
+                &real_nb_lights, 
+                lights,
+                &cam_coordinate,
+                &cam_lookat,
+                &sky_light_dir,
+                &sky_light_texture
+            );
+            scene_changed = 1;
+        }
 
         if (scene_changed) {
             scene_changed = 0;
             cam_moved = 1;
             
-
+            
             // STEP 4: Write host data to device buffers
             if (DEBUG_KERNEL_INFO) printf("\nSTEP 4: Write host data to device buffers\n");
             
