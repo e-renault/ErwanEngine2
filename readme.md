@@ -55,7 +55,18 @@ debug (experimental):
 --KINFO
 --HINFO
 ```
+## Available scenes
+This is what files you can use using "--file=" argument.
 
+ * cheval.obj
+ * cube.obj
+ * default.obj
+ * fox.obj
+ * horse2.obj
+ * maxwell.obj
+ * ~~nature.obj~~ (Please don't)
+ * pyramid.obj
+ * tenet.obj
 
 ## Controls
 ### Camera
