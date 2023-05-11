@@ -10,6 +10,16 @@ __kernel void simpleCast (
         int x_res,
         int y_res,
         float FOV,
+
+        //__global float* z_value_buffer,
+        //__global Vector3* normal_buffer,
+        //__global Point3* point_buffer,
+        //__global rgb* color_value_buffer,
+        //__global int* obj_buffer,
+        //__global Ray3* ray_buffer,
+        //__global rgb* direct_light_buffer,
+        //__global rgb* scene_light_buffer,
+
         __global rgb* final_outut_buffer,
 
         int nb_triangle,
@@ -34,13 +44,13 @@ __kernel void simpleCast (
 
     //temp
     const float CAM_XFOV_RAD = FOV * (PI / 180);
-    float step_x_rad = CAM_XFOV_RAD / x_res;//TODO: prerender
+    float step_x_rad = CAM_XFOV_RAD / x_res;
 
     //init local var
     float z_value_buffer = FLT_MAX;
-    Vector3 normal_buffer = {0, 0, 0};
+    Vector3 normal_buffer;
     Point3 point_buffer;
-    rgb color_value;
+    rgb color_value_buffer;
     int obj_buffer = -1;
 
     //convert frame location to rotation
@@ -53,7 +63,7 @@ __kernel void simpleCast (
     Vector3 vd_ray = cam_dir;
     vd_ray = rotateAround(vd_ray, up, theta_x);
     
-    Vector3 right = crossProduct(cam_dir, up);
+    Vector3 right = crossProduct(vd_ray, up);
     vd_ray = rotateAround(vd_ray, right, theta_y);
 
     Ray3 ray = (Ray3){.p=cam_point, .v=vd_ray};
@@ -63,12 +73,11 @@ __kernel void simpleCast (
 
     if (theta > 0.5){
         float heigth = 2*(theta - 0.5);
-        color_value = getColor(sky_color, heigth, 0);
+        color_value_buffer = getColor(sky_color, heigth, 0);
     } else {
         float heigth = 1- 2*theta;
-        color_value = getColor(sky_color, 0, heigth);
+        color_value_buffer = getColor(sky_color, 0, heigth);
     }
-
 
     /*********** first cast ***********/
     for(i = 0; i<nb_triangle; i++) {
@@ -84,31 +93,31 @@ __kernel void simpleCast (
                 z_value_buffer = dist;
                 normal_buffer = normal;
                 point_buffer = global_pos;
-                color_value = getColor(textures[i], local_pos.x, local_pos.y);
+                color_value_buffer = getColor(textures[i], local_pos.x, local_pos.y);
             }
         }
     }
 
     /*********** hard shadows ***********/
-    rgb direct_light = sky_color.color2;
+    rgb direct_light_buffer = sky_color.color2;
     if (obj_buffer != -1) {
-        Ray3 r = (Ray3) {.p=point_buffer, .v=sky_light_dir};
+        Ray3 r = (Ray3) {.p=point_buffer, .v=minus_vector3(sky_light_dir)};
         
         for(i = 0; i<nb_triangle; i++) {
             Point3 global_pos;Vector3 local_pos;Vector3 normal;float d;
             int hit = getCollisionRayTriangle(triangles[i], r, &global_pos, &local_pos, &normal, &d);
 
             if (hit) {
-                direct_light = scaling_substractive(direct_light, 0);
+                direct_light_buffer = scaling_substractive(direct_light_buffer, 0);
                 break;
             }
         }
-        float angle = getAngle(normal_buffer, sky_light_dir);
-        direct_light = scaling_substractive(direct_light, angle < 0.5 ? (1-angle*2):0);
+        float angle = getAngle(normal_buffer, minus_vector3(sky_light_dir));
+        direct_light_buffer = scaling_substractive(direct_light_buffer, angle < 0.5 ? (1-angle*2):0);
     }
 
     /*********** soft shadows ***********/
-    rgb scene_light = {0,0,0};
+    rgb scene_light_buffer = {0,0,0};
     if (obj_buffer != -1) {
         for(j = 0; j<nb_lights; j++) {
             Vector3 v = newVector(point_buffer, lights[j].source);
@@ -129,11 +138,14 @@ __kernel void simpleCast (
                 rgb temp_light = lights[j].color;
                 temp_light = scaling_substractive(temp_light, angle < 0.5 ? (1-angle*2):0);
                 temp_light = scaling_substractive(temp_light, 1-(dist/lights[j].intensity));
-                scene_light = synthese_additive(scene_light, temp_light);
+                scene_light_buffer = synthese_additive(scene_light_buffer, temp_light);
             }
         }
     }
 
-    rgb lignt_sum = synthese_additive(direct_light, scene_light);
-    final_outut_buffer[y*x_res + x] = min_color(lignt_sum, color_value);
+    /* Build up final render */
+    rgb lignt_sum = synthese_additive(direct_light_buffer, scene_light_buffer);
+    //final_outut_buffer[y*x_res + x] = scene_light_buffer; //neon render
+    final_outut_buffer[y*x_res + x] = min_color(direct_light_buffer, color_value_buffer);//only sun illum
+    //final_outut_buffer[y*x_res + x] = min_color(lignt_sum, color_value_buffer);//all in one render
 } 

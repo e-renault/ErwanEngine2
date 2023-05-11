@@ -1,34 +1,32 @@
 //cd /media/erenault/EXCHANGE/workspaces/ErwanEngine2/opencl/
 // gcc opencl_renderer.c -o opencl_renderer.out -lm -lOpenCL -lpthread -lGL -lglut 
-//-DDEBUG_RUN_INFO=1
+// optional: -DDEBUG_RUN_INFO=1
 
 #define CL_TARGET_OPENCL_VERSION 300
 #define USE_DEVICE_ID 0
 #define USE_PLATFORM_ID 0
 
-#include <stdio.h>
-#include <sys/stat.h>
-#include <stdlib.h> //malloc
-#include <pthread.h>
-#include <sys/time.h> //FPS counter
-#include <getopt.h>
-
-#include <GL/gl.h>
-#include <GL/freeglut.h>
-#include <GL/glu.h>
-
-#include "math/lib3D.h"
-#include "render/image.h"
-#include "render/texture.h"
-#include "light/lightSource.h"
-#include "render/color.h"
-#include "scene/sceneLoader.h"
-#include "kernel/header.h"
-
 #ifndef DEBUG_RUN_INFO
     #define DEBUG_RUN_INFO 0
 #endif
 
+#include <stdio.h>
+#include <sys/stat.h> //extract kernel
+#include <stdlib.h> //malloc
+#include <pthread.h> //obvious
+#include <sys/time.h> //FPS counter
+#include <getopt.h> //argument parameter parser
+#include "kernel/header.h" //opencl & cie
+
+#include <GL/freeglut.h> //for window
+
+#include "math/lib3D.h"
+#include "math/lib3D_debug.h"
+#include "render/image.h"
+#include "render/texture.h"
+#include "render/color.h"
+#include "light/lightSource.h"
+#include "scene/sceneLoader.h"
 
 
 // constants
@@ -43,8 +41,8 @@ static int MAX_NB_LIGHTSOURCE = 10;
 static int X_RES = 800;
 static float FOV = 70.0;
 static int RES = 480000;
-static char scene_path[300] = "/media/erenault/EXCHANGE/workspaces/ErwanEngine2/opencl/scene/data/";
-static char obj_file_name[100] = "cheval.obj";
+static char scene_path[300] = "scene/data/";
+static char obj_file_name[100] = "default.obj";
 static int SHOW_FPS = 0;
 static int DEBUG_GLOBAL_INFO = 0;
 static int DEBUG_KERNEL_INFO = 0;
@@ -52,11 +50,15 @@ static int DEBUG_HARDWARE_INFO = 0;
 
 // scene description
 static rgb* output_render_buffer;
-static Point3 cam_coordinate = {0, 1, 2.5};
-static Vector3 cam_lookat = {0, 0, -1};
-static Vector3 sky_light_dir = {0.6, 0.7, 1};
-//color1: horizon, color2: void, color3: sky
-static Texture sky_light_texture = {.x_res = 1, .y_res = 1, .color1={.r=0.58, .g=0.78, .b=0.92}, .color2={.r=1, .g=1, .b=1}, .color3={.r=0, .g=0, .b=1}};
+static Point3 cam_coordinate;
+static Vector3 cam_lookat;
+static Vector3 sky_light_dir;//direction of the sun light
+static Texture sky_light_texture;//sky texture see vvv
+/*
+    color1: horizon (color used for global ilumination)
+    color2: void
+    color3: Sky
+*/
 
 // program flow control
 static int program_running_loop = 1;
@@ -300,36 +302,22 @@ void keyboard(unsigned char key, int xmouse, int ymouse) {
     Vector3 UP = {0,1,0};
     Vector3 rightVector = crossProduct(cam_lookat, UP);
     switch (key) {
-        case 'z':
-            cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(0.1, cam_lookat)));
-            break;
-        case 's':
-            cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(-0.1f, cam_lookat)));
-            break;
-        case 'q':
-            cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(0.1, rightVector)));
-            break;
-        case 'd':
-            cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(-0.1f, rightVector)));
-            break;
-        case ' ':
-            cam_coordinate.y += 0.1;
-            break;
-        case 'e':
-            cam_coordinate.y -= 0.1;
-            break;
-        case 'm':
-            cam_lookat = rotateAround(cam_lookat, UP, 0.1f);
-            break;
-        case 'k':
-            cam_lookat = rotateAround(cam_lookat, UP, -0.1f);
-            break;
-        case 'o':
-            cam_lookat = rotateAround(cam_lookat, rightVector, 0.1f);
-            break;
-        case 'l':
-            cam_lookat = rotateAround(cam_lookat, rightVector, -0.1f);
-            break;
+        case 'z':cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(0.1, cam_lookat)));cam_moved = 1;break;
+        case 's':cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(-0.1f, cam_lookat)));cam_moved = 1;break;
+        case 'q':cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(0.1, rightVector)));cam_moved = 1;break;
+        case 'd':cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(-0.1f, rightVector)));cam_moved = 1;break;
+        case ' ':cam_coordinate.y += 0.1;cam_moved = 1;break;
+        case 'e':cam_coordinate.y -= 0.1;cam_moved = 1;break;
+        case 'm':cam_lookat = rotateAround(cam_lookat, UP, 0.1f);cam_moved = 1;break;
+        case 'k':cam_lookat = rotateAround(cam_lookat, UP, -0.1f);cam_moved = 1;break;
+        case 'o':cam_lookat = rotateAround(cam_lookat, rightVector, 0.1f);cam_moved = 1;break;
+        case 'l':cam_lookat = rotateAround(cam_lookat, rightVector, -0.1f);cam_moved = 1;break;
+        case 't':sky_light_dir.x +=0.1;scene_changed = 1;break;
+        case 'g':sky_light_dir.x -=0.1;scene_changed = 1;break;
+        case 'y':sky_light_dir.y +=0.1;scene_changed = 1;break;
+        case 'h':sky_light_dir.y -=0.1;scene_changed = 1;break;
+        case 'u':sky_light_dir.z +=0.1;scene_changed = 1;break;
+        case 'j':sky_light_dir.z -=0.1;scene_changed = 1;break;
         case 'x':
             program_running_loop = 0;
             glutLeaveMainLoop();
@@ -337,7 +325,15 @@ void keyboard(unsigned char key, int xmouse, int ymouse) {
         default:
             break;
     }
-    cam_moved = 1;
+    if (SHOW_FPS) {
+        printf("\rCam: {pos: ");
+        printPoint3(cam_coordinate);
+        printf(", dir: ");
+        printVector3(cam_lookat);
+        printf("} - Sun_light: {");
+        printVector3(sky_light_dir);
+        printf("}   ");
+    }
 }
 
 void* start_glut(void *vargp);
@@ -482,7 +478,7 @@ int main(int argc, char *argv[]) {
     cl_mem textures_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, RES * sizeof(Texture), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create texture buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
-    cl_mem render_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, RES * sizeof(rgb), NULL, &status);
+    cl_mem render_buffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, RES * sizeof(rgb), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create render buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
 
@@ -494,6 +490,25 @@ int main(int argc, char *argv[]) {
 
     cl_int real_nb_lights = 0;
     LightSource3* lights = (LightSource3*) calloc(MAX_NB_LIGHTSOURCE, sizeof(LightSource3));
+
+
+    //scene build
+    char path[500] = "\0";
+    strcat(path, scene_path);
+    strcat(path, obj_file_name);
+    if (DEBUG_GLOBAL_INFO) printf("Loading : %s\n", path);
+    status = loadSceneFromFile(
+        path, 
+        &real_nb_triangles, 
+        triangles, 
+        textures, 
+        &real_nb_lights, 
+        lights,
+        &cam_coordinate,
+        &cam_lookat,
+        &sky_light_dir,
+        &sky_light_texture
+    );
 
 
     // init window
@@ -524,13 +539,6 @@ int main(int argc, char *argv[]) {
             scene_changed = 0;
             cam_moved = 1;
             
-            //scene build
-            char path[500] = "\0";
-            strcat(path, scene_path);
-            strcat(path, obj_file_name);
-            if (DEBUG_GLOBAL_INFO) printf("Loading : %s\n", path);
-            status = loadSceneFromFile(path, &real_nb_triangles, triangles, textures, &real_nb_lights, lights);
-
 
             // STEP 4: Write host data to device buffers
             if (DEBUG_KERNEL_INFO) printf("\nSTEP 4: Write host data to device buffers\n");

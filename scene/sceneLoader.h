@@ -14,7 +14,11 @@ int loadSceneFromFile(
         Triangle3* triangles,
         Texture* textures,
         int* nb_lights,
-        LightSource3* lights
+        LightSource3* lights,
+        Point3* cam_coordinate,
+        Vector3* cam_lookat,
+        Vector3* sky_light_dir,
+        Texture* sky_light_texture
     ) {
 
     FILE *fptr;
@@ -40,6 +44,8 @@ int loadSceneFromFile(
     int object_index = 0;
     int triangle_index = 0;
     int _;
+    *nb_lights = 0;
+    *nb_triangle = 0;
     
     while ((len2 = getline(&line, &len1, fptr)) != -1) {
         identifier = strtok_r(line, " ", &rest);
@@ -103,20 +109,29 @@ int loadSceneFromFile(
     lights[(*nb_lights)++] = (LightSource3) {
         .color = (rgb) {1,0,0},
         .dir = (Vector3) {0,0,0},
-        .source = (Point3) {0,0.5,3},
-        .intensity = 10
+        .source = (Point3) {0,5,7},
+        .intensity = 60
     };
     lights[(*nb_lights)++] = (LightSource3) {
         .color = (rgb) {0,1,0},
         .dir = (Vector3) {0,0,0},
-        .source = (Point3) {2,0.5,1},
-        .intensity = 10
+        .source = (Point3) {5,5,7},
+        .intensity = 60
     };
     lights[(*nb_lights)++] = (LightSource3) {
         .color = (rgb) {0,0,1},
         .dir = (Vector3) {0,0,0},
-        .source = (Point3) {-2,0.5,1},
-        .intensity = 5
+        .source = (Point3) {-5,5,7},
+        .intensity = 60
+    };
+
+    *cam_coordinate = (Point3) {0, 1, 2.5};
+    *cam_lookat = (Vector3) {0, 0, -1};
+    *sky_light_dir = (Vector3) {-0.7, -1, -0.5};
+    *sky_light_texture = (Texture) {
+        .color1={.r=0.58, .g=0.78, .b=0.92},
+        .color2={.r=1.3, .g=1.3, .b=1.3},//sky lum base_ref
+        .color3={.r=0, .g=0, .b=1}
     };
 
     return *nb_triangle;
