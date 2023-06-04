@@ -2,8 +2,8 @@
 #define M_OBJECT3_COLLISION_H_
 
 #include "../kernel/header.h"
-#include "../math/mVector3.h"
-#include "../math/mMatrix3.h"
+#include "../kernel/kVector3.h"
+#include "../kernel/kMatrix4x4.h"
 
 Point3 collisionRayPlane(Plane3 pl, Ray3 r, float* t);
 Point3 collisionRayPlane(Plane3 pl, Ray3 r, float* t) {

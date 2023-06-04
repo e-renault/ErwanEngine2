@@ -448,7 +448,7 @@ int main(int argc, char *argv[]) {
     pthread_t glut_thread_id;
     glutInit(&argc, argv);
     status = pthread_create(&glut_thread_id, NULL, start_glut, NULL);
-    if (DEBUG_GLOBAL_INFO) printf("%s Creating GLUT thread\n", (status == 1)? SUCCESS_MSG:(ERROR_MSG));
+    if (DEBUG_GLOBAL_INFO) printf("%s Creating GLUT thread\n", (status == 0)? SUCCESS_MSG:(ERROR_MSG));
 
 
     cl_platform_id* platforms = init_platform();

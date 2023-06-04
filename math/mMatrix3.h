@@ -4,8 +4,6 @@
 #include "../kernel/header.h"
 #include "mVector3.h"
 
-
-//TODO: paralellize
 Matrix3 invert(Matrix3 m) {
     Matrix3 ret;
 
@@ -39,25 +37,6 @@ Matrix3 invert(Matrix3 m) {
     ret.mat.s8 *= det;
     ret.mat.s9 *= det;
     ret.mat.sA *= det;
-
-    return ret;
-}
-
-//TODO: paralellize
-Vector3 multiply(Matrix3 m, Vector3 v) {
-    Vector3 ret;
-
-    ret.x = m.mat.s0 * v.x
-            + m.mat.s1 * v.y
-            + m.mat.s2 * v.z;
-
-    ret.y = m.mat.s4 * v.x
-            + m.mat.s5 * v.y
-            + m.mat.s6 * v.z;
-
-    ret.z = m.mat.s8 * v.x
-            + m.mat.s9 * v.y
-            + m.mat.sA * v.z;
 
     return ret;
 }
