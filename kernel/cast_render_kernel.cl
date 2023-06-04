@@ -57,7 +57,6 @@ __kernel void simpleCast (
     float theta_y = step_x_rad * (y - y_res/2);
 
 
-
     /*********** Init cam ***********/
     Vector3 vd_ray = cam_dir;
     vd_ray = rotateAround(vd_ray, up, theta_x);
@@ -67,6 +66,7 @@ __kernel void simpleCast (
 
     Ray3 ray = (Ray3){.p=cam_point, .v=vd_ray};
     
+
     /*********** Sky color ***********/
     float theta = getAngle(vd_ray, up);
 
@@ -77,6 +77,7 @@ __kernel void simpleCast (
         float heigth = 1- 2*theta;
         color_value_buffer = getColor(sky_color, 0, heigth);
     }
+
 
     /*********** first cast ***********/
     for(i = 0; i<nb_triangle; i++) {
@@ -93,6 +94,7 @@ __kernel void simpleCast (
             color_value_buffer = getColor(textures[i], local_pos.x, local_pos.y);
         }
     }
+
 
     /*********** hard shadows ***********/
     rgb direct_light_buffer = sky_color.color2;
@@ -111,6 +113,7 @@ __kernel void simpleCast (
         float angle = getAngle(normal_buffer, -sky_light_dir);
         direct_light_buffer = (direct_light_buffer * (angle<0.5 ? (1-angle*2):0));
     }
+
 
     /*********** soft shadows ***********/
     rgb scene_light_buffer = (rgb) {0,0,0};
@@ -140,17 +143,17 @@ __kernel void simpleCast (
         }
     }
 
-    /* Build up final render */
+    /*********** Build up final render ***********/
     rgb lignt_sum = cap((direct_light_buffer + scene_light_buffer));
-    //final_outut_buffer[y*x_res + x] = scene_light_buffer; //neon render
-    rgb c = min(direct_light_buffer, color_value_buffer);//only sun illum
-    //final_outut_buffer[y*x_res + x] = min(lignt_sum, color_value_buffer);//all in one render
+    //rgb c = scene_light_buffer;                           //neon render
+    rgb c = min(direct_light_buffer, color_value_buffer);   //only sun illum
+    //rgb c = min(lignt_sum, color_value_buffer);           //both
 
     uint4 color = (uint4)(
         c.x*255, 
         c.y*255, 
         c.z*255, 
         255
-    ); // Red color
+    );
     write_imageui(final_outut_buffer, (int2)(x, y), color);
 } 

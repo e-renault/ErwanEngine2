@@ -4,7 +4,7 @@ This is an early buggy access. If it works (houra!), be careful with CPU and GPU
 
 Also, do not import obj file that have more than 600 triangles or 400 points. 
 
-Currently, lights are experimental and cannot be changed.
+Currently, lights are experimental and cannot be changed (hard coded stuffs).
 
 I'm not responsible of what could cause the execution of the program in any way.
 
@@ -19,7 +19,7 @@ You would probably need to install :
     intel-opencl-icd, ocl-icd-opencl-dev, opencl-headers
     
 
-Depending on you hardware, you could have to change DEVICE_ID and PLATFORM_ID in order to select you GPU (check first line of "opencl_renderer.c")
+Depending on you hardware, you could have to change DEVICE_ID and PLATFORM_ID in order to select you GPU (check first line of "opencl_renderer.c"). Mine is intel integrated Intel(R) UHD Graphics 620.
 
 ## Compile
 You can use the command :
@@ -37,17 +37,17 @@ optional:
 
 optional:
 ```
---file  [OBJ_FILE_TO_LOAD]              (default:?)  <- this one is really experimental++
+--file  [OBJ_FILE_TO_LOAD]              (default:"default.obj")  <- you should use one of the Availables scenes (see section "Available scenes").
 --fov   [FIELD_OF_VIEW_IN_DEGREE]       (default:70)
---xres  [HORISONTAL_RESOLUTION_IN_PX]   (default:?)
---yres  [VERTICAL_RESOLUTION_IN_PX]     (default:?)
+--xres  [HORISONTAL_RESOLUTION_IN_PX]   (default:800)
+--yres  [VERTICAL_RESOLUTION_IN_PX]     (default:600)
 ```
 
 debug (experimental):
 ```
---path  [SCENE_PATH]                    (default:10)
---max_triangle [NB_TRIANGLES_MAX]       (default:?)
---max_lightsource [NB_LIGHT_MAX]        (default:?)
+--path  [SCENE_PATH]                    (default:"scene/data/")
+--max_triangle [NB_TRIANGLES_MAX]       (default:650)
+--max_lightsource [NB_LIGHT_MAX]        (default:10)
 --FPS
 --GINFO
 --KINFO
