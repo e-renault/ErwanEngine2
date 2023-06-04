@@ -1,7 +1,6 @@
-#include "math/lib3D.h"
-#include "render/color.h"
-#include "render/texture.h"
-#include "light/lightSource.h"
+#include "kernel/mObject3_collision.h"
+#include "kernel/texture.h"
+#include "kernel/color.h"
 
 __constant const Vector3 up = {0, 1, 0};//constant vector
 #define PI 3.14159
@@ -20,7 +19,7 @@ __kernel void simpleCast (
         //__global rgb* direct_light_buffer,
         //__global rgb* scene_light_buffer,
 
-        __global rgb* final_outut_buffer,
+        __write_only image2d_t final_outut_buffer,
 
         int nb_triangle,
         __constant Triangle3* triangles,
@@ -82,70 +81,76 @@ __kernel void simpleCast (
     /*********** first cast ***********/
     for(i = 0; i<nb_triangle; i++) {
         //get collision with triangle
-        Point3 global_pos;Vector3 local_pos;Vector3 normal;float d;
-        int hit = getCollisionRayTriangle(triangles[i], ray, &global_pos, &local_pos, &normal, &d);
+        Point3 global_pos;Vector3 local_pos;Vector3 normal;float dist;
+        int hit = getCollisionRayTriangle(triangles[i], ray, z_value_buffer, &global_pos, &local_pos, &normal, &dist);
 
         //update z_buffer
         if (hit) {
-            float dist = getLength(global_pos, cam_point);
-            if (z_value_buffer > dist) {
-                obj_buffer = i;
-                z_value_buffer = dist;
-                normal_buffer = normal;
-                point_buffer = global_pos;
-                color_value_buffer = getColor(textures[i], local_pos.x, local_pos.y);
-            }
+            obj_buffer = i;
+            z_value_buffer = dist;
+            normal_buffer = normal;
+            point_buffer = global_pos;
+            color_value_buffer = getColor(textures[i], local_pos.x, local_pos.y);
         }
     }
 
     /*********** hard shadows ***********/
     rgb direct_light_buffer = sky_color.color2;
     if (obj_buffer != -1) {
-        Ray3 r = (Ray3) {.p=point_buffer, .v=minus_vector3(sky_light_dir)};
+        Ray3 r = (Ray3) {.p=point_buffer, .v=-sky_light_dir};
         
         for(i = 0; i<nb_triangle; i++) {
             Point3 global_pos;Vector3 local_pos;Vector3 normal;float d;
-            int hit = getCollisionRayTriangle(triangles[i], r, &global_pos, &local_pos, &normal, &d);
+            int hit = getCollisionRayTriangle(triangles[i], r, FLT_MAX, &global_pos, &local_pos, &normal, &d);
 
             if (hit) {
-                direct_light_buffer = scaling_substractive(direct_light_buffer, 0);
+                direct_light_buffer = (direct_light_buffer * 0);
                 break;
             }
         }
-        float angle = getAngle(normal_buffer, minus_vector3(sky_light_dir));
-        direct_light_buffer = scaling_substractive(direct_light_buffer, angle < 0.5 ? (1-angle*2):0);
+        float angle = getAngle(normal_buffer, -sky_light_dir);
+        direct_light_buffer = (direct_light_buffer * (angle<0.5 ? (1-angle*2):0));
     }
 
     /*********** soft shadows ***********/
-    rgb scene_light_buffer = {0,0,0};
+    rgb scene_light_buffer = (rgb) {0,0,0};
     if (obj_buffer != -1) {
         for(j = 0; j<nb_lights; j++) {
-            Vector3 v = newVector(point_buffer, lights[j].source);
+            Vector3 v = getNorm(newVector(point_buffer, lights[j].source));
             Ray3 r = (Ray3) {.p=point_buffer, .v=v};
             
-            float dist = getLength(lights[j].source, point_buffer);
-            if (dist>lights[j].intensity) break;
+            float max_dist = getLength(lights[j].source, point_buffer);
+            //if (lights[j].intensity < max_dist) break;
 
             int hit = 0;
             for(i = 0; i<nb_triangle; i++) {
                 Point3 global_pos;Vector3 local_pos;Vector3 normal;float d;
-                hit &= getCollisionRayTriangle(triangles[i], r, &global_pos, &local_pos, &normal, &d);
+                hit = getCollisionRayTriangle(triangles[i], r, max_dist, &global_pos, &local_pos, &normal, &d);
                 if (hit) break;
             }
                 
             if (!hit) {
                 float angle = getAngle(normal_buffer, v);
                 rgb temp_light = lights[j].color;
-                temp_light = scaling_substractive(temp_light, angle < 0.5 ? (1-angle*2):0);
-                temp_light = scaling_substractive(temp_light, 1-(dist/lights[j].intensity));
-                scene_light_buffer = synthese_additive(scene_light_buffer, temp_light);
+                temp_light = (temp_light * (angle < 0.5 ? (1-angle*2):0));
+                temp_light = (temp_light * (1-(max_dist/lights[j].intensity)));
+                temp_light = cap(temp_light);
+                scene_light_buffer = (scene_light_buffer + temp_light);
             }
         }
     }
 
     /* Build up final render */
-    rgb lignt_sum = synthese_additive(direct_light_buffer, scene_light_buffer);
+    rgb lignt_sum = cap((direct_light_buffer + scene_light_buffer));
     //final_outut_buffer[y*x_res + x] = scene_light_buffer; //neon render
-    //final_outut_buffer[y*x_res + x] = min_color(direct_light_buffer, color_value_buffer);//only sun illum
-    final_outut_buffer[y*x_res + x] = min_color(lignt_sum, color_value_buffer);//all in one render
+    rgb c = min(direct_light_buffer, color_value_buffer);//only sun illum
+    //final_outut_buffer[y*x_res + x] = min(lignt_sum, color_value_buffer);//all in one render
+
+    uint4 color = (uint4)(
+        c.x*255, 
+        c.y*255, 
+        c.z*255, 
+        255
+    ); // Red color
+    write_imageui(final_outut_buffer, (int2)(x, y), color);
 } 

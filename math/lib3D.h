@@ -4,6 +4,5 @@
 #include "mVector3.h"
 #include "mMatrix3.h"
 #include "mObject3.h"
-#include "mObject3_collision.h"
 
 #endif // LIB3D_H_

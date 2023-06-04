@@ -3,54 +3,41 @@
 
 #include "../kernel/header.h"
 
-
-typedef union __attribute__ ((packed)) Vector3 {
-    struct {
-        EE_FLOAT x, y, z;
-    };
-    EE_FLOAT v[3];
-} Vector3;
-
-typedef union __attribute__ ((packed)) Point3 {
-    struct {
-        EE_FLOAT x, y, z;
-    };
-    EE_FLOAT c[3];
-} Point3;
-
 //TODO this is an horrible conversion
+//TODO remove unused
 Vector3 static inline toVector(Point3 p) {
     return *((Vector3*) &p);
 }
 
 //TODO this is an horrible conversion
+//TODO remove unused
 Point3 static inline toPoint(Vector3 v) {
     return *((Point3*) &v);
 }
 
 Vector3 newVector(Point3 p1, Point3 p2) {
     return (Vector3) {
-        .x = p2.x - p1.x, 
-        .y = p2.y - p1.y, 
-        .z = p2.z - p1.z
+        p2.x - p1.x, 
+        p2.y - p1.y, 
+        p2.z - p1.z
     };
 }
 
 //TODO: paralellize
 Vector3 add_vector3(Vector3 v1, Vector3 v2) {
     return (Vector3) {
-        .x = v1.x + v2.x,
-        .y = v1.y + v2.y,
-        .z = v1.z + v2.z
+        v1.x + v2.x,
+        v1.y + v2.y,
+        v1.z + v2.z
     };
 }
 
 //TODO: paralellize
 Vector3 minus_vector3(Vector3 v) {
     return (Vector3) {
-        .x = - v.x,
-        .y = - v.y,
-        .z = - v.z
+        - v.x,
+        - v.y,
+        - v.z
     };
 }
 
@@ -73,16 +60,16 @@ float dotProduct(Vector3 v1, Vector3 v2) {
 
 Vector3 static inline scale_vector3(float s, Vector3 v) {
     return (Vector3) {
-        .x = s* v.x,
-        .y = s* v.y,
-        .z = s* v.z
+        s* v.x,
+        s* v.y,
+        s* v.z
     };
 }
 
 EE_FLOAT getLength(Point3 p1, Point3 p2) {
-    float d1 = p2.x - p1.x;
-    float d2 = p2.y - p1.y;
-    float d3 = p2.z - p1.z;
+    EE_FLOAT d1 = p2.x - p1.x;
+    EE_FLOAT d2 = p2.y - p1.y;
+    EE_FLOAT d3 = p2.z - p1.z;
     EE_FLOAT ret = sqrt(d1*d1 + d2*d2 + d3*d3);
     return ret;
 }
@@ -95,9 +82,9 @@ EE_FLOAT getLength2(Vector3 v) {
 Vector3 getNorm(Vector3 v) {
     float len = getLength2(v);
     return (Vector3) {
-        .x = v.x / len, 
-        .y = v.y / len,
-        .z = v.z / len
+        v.x / len, 
+        v.y / len,
+        v.z / len
     };
 }
 

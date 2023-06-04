@@ -6,7 +6,6 @@
 #include <sys/time.h>
 #include <string.h>
 #include "../math/lib3D.h"
-#include "../light/lightSource.h"
 #include "../math/lib3D_debug.h"
 
 int loadSceneFromFile(
@@ -37,7 +36,7 @@ int loadSceneFromFile(
     //TODO potential error
     Point3 points[400];
     rgb color[400];
-    color[0]=(rgb){.r=1,.g=1,.b=1};
+    color[0]=(rgb){1,1,1};
     char object[50][10] = {"missingno"};
 
     int color_index = 1;
@@ -57,21 +56,21 @@ int loadSceneFromFile(
         } else if (!strcmp(identifier, "v")) {
             float x, y, z;
             sscanf(rest, " %f %f %f", &x, &y, &z);
-            points[point_index] = (Point3) {.c={x, y, z}};
+            points[point_index] = (Point3) {x, y, z};
             point_index++;
             
             //printPoint3(points[point_index-1]);printf("\n");
         } else if (!strcmp(identifier, "vt")) {
             float c1, c2;
             sscanf(rest, " %f %f", &c1, &c2);
-            color[color_index] = (rgb) {.r=c1, .g=c2, .b=1-(c1+c2)};
+            color[color_index] = (rgb) {c1, c2, 1-(c1+c2)};
             color_index++;
             
             //printf("(%f, %f, %f)\n", color[color_index-1].r, color[color_index-1].r, color[color_index-1].r);
         } else if (!strcmp(identifier, "vc")) {
             float r, g, b;
             sscanf(rest, " %f %f %f", &r, &g, &b);
-            color[color_index] = (rgb) {.r=r, .g=g, .b=b};
+            color[color_index] = (rgb) {r, g, b};
             color_index++;
             
             //printPoint3(points[point_index-1]);printf("\n");
@@ -108,31 +107,32 @@ int loadSceneFromFile(
         free(line);
 
     lights[(*nb_lights)++] = (LightSource3) {
+        .color = (rgb) {0,0,1},
+        .dir = (Vector3) {0,0,0},
+        .source = (Point3) {7,5,3},
+        .intensity = 10
+    };
+    lights[(*nb_lights)++] = (LightSource3) {
         .color = (rgb) {1,0,0},
         .dir = (Vector3) {0,0,0},
         .source = (Point3) {0,5,7},
-        .intensity = 60
+        .intensity = 10
     };
     lights[(*nb_lights)++] = (LightSource3) {
         .color = (rgb) {0,1,0},
         .dir = (Vector3) {0,0,0},
-        .source = (Point3) {5,5,7},
-        .intensity = 60
+        .source = (Point3) {-7,5,3},
+        .intensity = 10
     };
-    lights[(*nb_lights)++] = (LightSource3) {
-        .color = (rgb) {0,0,1},
-        .dir = (Vector3) {0,0,0},
-        .source = (Point3) {-5,5,7},
-        .intensity = 60
-    };
-
+    
+    //*nb_lights = 1;
     *cam_coordinate = (Point3) {0, 1, 2.5};
     *cam_lookat = (Vector3) {0, 0, -1};
     *sky_light_dir = (Vector3) {-0.7, -1, -0.5};
     *sky_light_texture = (Texture) {
-        .color1={.r=0.58, .g=0.78, .b=0.92},
-        .color2={.r=1.3, .g=1.3, .b=1.3},//sky lum base_ref
-        .color3={.r=0, .g=0, .b=1}
+        .color1={0.58,  0.78,  0.92},
+        .color2={1.3,   1.3,   1.3},//sky lum base_ref
+        .color3={0,     0,     1}
     };
 
     return *nb_triangle;
@@ -195,12 +195,46 @@ int loadCubeScene(
 
     *nb_triangle = i;
 
+    rgb random_colors[32] = {
+        {0.036422119577474, 0.704109688303234, 0.45896783111661},
+        {0.956269448285397, 0.0225273324605426, 0.92021036821545},
+        {0.420983478522237, 0.941959452024163, 0.872646938139664},        
+        {0.511912583274566, 0.873792707860716, 0.289653062852194},        
+        {0.073244978282671, 0.409036657662119, 	0.57471693354335},
+        {0.952614859803359, 0.696963677206315, 0.808357751569233},        
+        {0.587739078058138, 0.388074065093731, 0.996909808547681},        
+        {0.840783554242627, 0.840773691455328, 0.326636740994671},        
+        {0.433044182104898, 0.865486673796387, 0.103800389361594},        
+        {0.030073544872235, 0.008653624617048, 0.746564945594},
+        {0.374376202921323, 0.242621578765991, 0.433938037871508},        
+        {0.388967932380261, 0.919815685550748, 0.317127439679906},        
+        {0.491511090163302, 0.627888033110743, 0.062552685579218},
+        {0.896303796783786, 0.538532580810791, 0.563982140030735},        
+        {0.582902661225595, 0.880817534389428, 0.745208654421003},        
+        {0.156943572641026, 0.66437873703904, 0.610699686272349},
+        {0.954385160276854, 0.445921688189521, 0.98975014618411},
+        {0.082011468003816, 0.432656475032383, 	0.12380354853685},
+        {0.675419855566087, 0.0494199145340208, 0.97066110137608},
+        {0.672434702344021, 0.650425553397091, 0.482039137232547},        
+        {0.209522442995634, 0.108872134366092, 0.873686250541582},        
+        {0.091376754007102, 0.432874560106377, 0.46060482538636},
+        {0.099706675595527, 0.959420719265034, 0.71281571676143},
+        {0.934684749466345, 0.457964781814187, 0.277319652088188},        
+        {0.289744386533678, 0.475310519058473, 0.160283028867265},        
+        {0.61041733010124, 0.913035540638055, .882560694948989}, 
+        {0.287841735186862, 0.0561812115307762, 0.28637401127652},
+        {0.008838310763848, 0.91535707848396, 0.8164292832216},
+        {0.116346871414582, 0.877979777046005, 0.014705205378353},        
+        {0.277411672120203, 0.953316637720127, 0.705492149611232},        
+        {0.705210590334554, 0.951415598863655, 0.337004898660462},        
+        {0.069476201324669, 0.841603411752756, 0.00136731772498},
+        {0.917187801632521, 0.0262881029625109, 0.19007638867168},
+        };
     for (;i--;) {
-        rgb col = {1, 1, 1};
         textures[i] = (Texture) {
-            .color1=col, 
-            .color2=col, 
-            .color3=col
+            .color1=random_colors[i %32], 
+            .color2=random_colors[i+1 %32], 
+            .color3=random_colors[i+2 %32]
         };
     }
 

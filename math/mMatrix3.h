@@ -1,33 +1,28 @@
 #ifndef M_MATRIX3_H_
 #define M_MATRIX3_H_
 
-
 #include "../kernel/header.h"
-
 #include "mVector3.h"
 
-typedef struct __attribute__ ((packed)) Matrix3 {
-  EE_FLOAT val[3][3];
-} Matrix3;
 
 //TODO: paralellize
 Matrix3 invert(Matrix3 m) {
     Matrix3 ret;
 
     // Compute adjoints
-    ret.val[0][0] = + m.val[1][1] * m.val[2][2] - m.val[1][2] * m.val[2][1];
-    ret.val[0][1] = - m.val[0][1] * m.val[2][2] + m.val[0][2] * m.val[2][1];
-    ret.val[0][2] = + m.val[0][1] * m.val[1][2] - m.val[0][2] * m.val[1][1];
-    ret.val[1][0] = - m.val[1][0] * m.val[2][2] + m.val[1][2] * m.val[2][0];
-    ret.val[1][1] = + m.val[0][0] * m.val[2][2] - m.val[0][2] * m.val[2][0];
-    ret.val[1][2] = - m.val[0][0] * m.val[1][2] + m.val[0][2] * m.val[1][0];
-    ret.val[2][0] = + m.val[1][0] * m.val[2][1] - m.val[1][1] * m.val[2][0];
-    ret.val[2][1] = - m.val[0][0] * m.val[2][1] + m.val[0][1] * m.val[2][0];
-    ret.val[2][2] = + m.val[0][0] * m.val[1][1] - m.val[0][1] * m.val[1][0];
+    ret.mat.s0 = + m.mat.s5 * m.mat.sA - m.mat.s6 * m.mat.s9;
+    ret.mat.s1 = - m.mat.s1 * m.mat.sA + m.mat.s2 * m.mat.s9;
+    ret.mat.s2 = + m.mat.s1 * m.mat.s6 - m.mat.s2 * m.mat.s5;
+    ret.mat.s4 = - m.mat.s4 * m.mat.sA + m.mat.s6 * m.mat.s8;
+    ret.mat.s5 = + m.mat.s0 * m.mat.sA - m.mat.s2 * m.mat.s8;
+    ret.mat.s6 = - m.mat.s0 * m.mat.s6 + m.mat.s2 * m.mat.s4;
+    ret.mat.s8 = + m.mat.s4 * m.mat.s9 - m.mat.s5 * m.mat.s8;
+    ret.mat.s9 = - m.mat.s0 * m.mat.s9 + m.mat.s1 * m.mat.s8;
+    ret.mat.sA = + m.mat.s0 * m.mat.s5 - m.mat.s1 * m.mat.s4;
 
     // Compute determinant
     float det;
-    det = m.val[0][0] * ret.val[0][0] + m.val[0][1] * ret.val[1][0] + m.val[0][2] * ret.val[2][0];
+    det = m.mat.s0 * ret.mat.s0 + m.mat.s1 * ret.mat.s4 + m.mat.s2 * ret.mat.s8;
 
     // anti zero detection
     if (det == 0) det = FLT_MIN;
@@ -35,15 +30,15 @@ Matrix3 invert(Matrix3 m) {
 
     det = 1.0f / det;
 
-    ret.val[0][0] *= det;
-    ret.val[0][1] *= det;
-    ret.val[0][2] *= det;
-    ret.val[1][0] *= det;
-    ret.val[1][1] *= det;
-    ret.val[1][2] *= det;
-    ret.val[2][0] *= det;
-    ret.val[2][1] *= det;
-    ret.val[2][2] *= det;
+    ret.mat.s0 *= det;
+    ret.mat.s1 *= det;
+    ret.mat.s2 *= det;
+    ret.mat.s4 *= det;
+    ret.mat.s5 *= det;
+    ret.mat.s6 *= det;
+    ret.mat.s8 *= det;
+    ret.mat.s9 *= det;
+    ret.mat.sA *= det;
 
     return ret;
 }
@@ -52,17 +47,17 @@ Matrix3 invert(Matrix3 m) {
 Vector3 multiply(Matrix3 m, Vector3 v) {
     Vector3 ret;
 
-    ret.x = m.val[0][0] * v.x
-            + m.val[0][1] * v.y
-            + m.val[0][2] * v.z;
+    ret.x = m.mat.s0 * v.x
+            + m.mat.s1 * v.y
+            + m.mat.s2 * v.z;
 
-    ret.y = m.val[1][0] * v.x
-            + m.val[1][1] * v.y
-            + m.val[1][2] * v.z;
+    ret.y = m.mat.s4 * v.x
+            + m.mat.s5 * v.y
+            + m.mat.s6 * v.z;
 
-    ret.z = m.val[2][0] * v.x
-            + m.val[2][1] * v.y
-            + m.val[2][2] * v.z;
+    ret.z = m.mat.s8 * v.x
+            + m.mat.s9 * v.y
+            + m.mat.sA * v.z;
 
     return ret;
 }

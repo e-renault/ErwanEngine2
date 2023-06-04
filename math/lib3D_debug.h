@@ -15,9 +15,9 @@ void printMatrix3(Matrix3 m) {
     printf("{{%f, %f, %f)},\n"
     " {%f, %f, %f)},\n"
     " {%f, %f, %f)}}\n", 
-    m.val[0][0], m.val[0][1], m.val[0][2], 
-    m.val[1][0], m.val[1][1], m.val[1][2], 
-    m.val[2][0], m.val[2][1], m.val[2][2]);
+    m.mat.s[0*4 + 0], m.mat.s[0*4 + 1], m.mat.s[0*4 + 2], 
+    m.mat.s[1*4 + 0], m.mat.s[1*4 + 1], m.mat.s[1*4 + 2], 
+    m.mat.s[2*4 + 0], m.mat.s[2*4 + 1], m.mat.s[2*4 + 2]);
 }
 
 void printRay3(Ray3 r) {

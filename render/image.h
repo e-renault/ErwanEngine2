@@ -2,7 +2,7 @@
 #define IMAGE_H_
 
 #include <stdio.h>
-#include "color.h"
+#include "../kernel/header.h"
 
 typedef struct frameRGB {
     int x_res, y_res;
@@ -18,9 +18,9 @@ frameRGB newFrame(int x_res, int y_res) {
 
     int x;for (x=0; x<x_res; x++) {
         int y;for (y=0; y<y_res; y++) {
-            ret.frame[y* x_res + x].r = 0;
-            ret.frame[y* x_res + x].g = 0;
-            ret.frame[y* x_res + x].b = 0;
+            ret.frame[y* x_res + x].x = 0;
+            ret.frame[y* x_res + x].y = 0;
+            ret.frame[y* x_res + x].z = 0;
         }
     }
     return ret;
@@ -42,9 +42,9 @@ void generateImg(frameRGB image, char* location) {
     int y = image.y_res-1;for (; y-- ;) {
         int x;for (x = 0; x < image.x_res; x++) {
             rgb c = image.frame[y * image.x_res + x];
-            int r = (c.r *255);
-            int g = (c.g *255);
-            int b = (c.b *255);
+            int r = (c.x *255);
+            int g = (c.y *255);
+            int b = (c.z *255);
 
             if (r>255 || g>255 || b>255 || r<0 || g<0 || b<0) {
                 out_of_bound++;

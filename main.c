@@ -1,6 +1,7 @@
 // cd /media/erenault/EXCHANGE/workspaces/ErwanEngine2/opencl/
 // gcc main.c -lm -lOpenCL -lpthread -lGL -lglut
 // optional: -DDEBUG_RUN_INFO=1
+// ./a.out --file cheval.obj --FPS
 
 #define CL_TARGET_OPENCL_VERSION 300
 #define USE_DEVICE_ID 0
@@ -23,9 +24,6 @@
 #include "math/lib3D.h"
 #include "math/lib3D_debug.h"
 #include "render/image.h"
-#include "render/texture.h"
-#include "render/color.h"
-#include "light/lightSource.h"
 #include "scene/sceneLoader.h"
 
 
@@ -49,7 +47,7 @@ static int DEBUG_KERNEL_INFO = 0;
 static int DEBUG_HARDWARE_INFO = 0;
 
 // scene description
-static rgb* output_render_buffer;
+static unsigned char* output_render_buffer;
 static Point3 cam_coordinate;
 static Vector3 cam_lookat;
 static Vector3 sky_light_dir;//direction of the sun light
@@ -292,7 +290,7 @@ void display_callback(){
         glClear( GL_COLOR_BUFFER_BIT );
 
         //draw pixels
-        glDrawPixels( X_RES, Y_RES, GL_RGB, GL_FLOAT, output_render_buffer );
+        glDrawPixels( X_RES, Y_RES, GL_RGBA, GL_UNSIGNED_BYTE, output_render_buffer );
         glutSwapBuffers();
     }
     glutPostRedisplay();
@@ -303,10 +301,10 @@ void keyboard(unsigned char key, int xmouse, int ymouse) {
     Vector3 UP = {0,1,0};
     Vector3 rightVector = crossProduct(cam_lookat, UP);
     switch (key) {
-        case 'z':cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(0.1, cam_lookat)));cam_moved = 1;break;
-        case 's':cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(-0.1f, cam_lookat)));cam_moved = 1;break;
-        case 'q':cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(0.1, rightVector)));cam_moved = 1;break;
-        case 'd':cam_coordinate = toPoint(add_vector3(toVector(cam_coordinate), scale_vector3(-0.1f, rightVector)));cam_moved = 1;break;
+        case 'z':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(0.1, cam_lookat));cam_moved = 1;break;
+        case 's':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(-0.1f, cam_lookat));cam_moved = 1;break;
+        case 'q':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(0.1, rightVector));cam_moved = 1;break;
+        case 'd':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(-0.1f, rightVector));cam_moved = 1;break;
         case ' ':cam_coordinate.y += 0.1;cam_moved = 1;break;
         case 'e':cam_coordinate.y -= 0.1;cam_moved = 1;break;
         case 'm':cam_lookat = rotateAround(cam_lookat, UP, 0.1f);cam_moved = 1;break;
@@ -480,11 +478,28 @@ int main(int argc, char *argv[]) {
     cl_mem textures_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, RES * sizeof(Texture), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create texture buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
-    cl_mem render_buffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, RES * sizeof(rgb), NULL, &status);
+    // Create an output image
+    cl_image_desc imageDesc = (cl_image_desc){
+        .image_type = CL_MEM_OBJECT_IMAGE2D,
+        .image_width = X_RES,
+        .image_height = Y_RES,
+        .image_depth = 1,
+        .image_array_size = 1,
+        .image_row_pitch = 0,
+        .image_slice_pitch = 0,
+        .num_mip_levels = 0,
+        .num_samples = 0,
+        .buffer = NULL
+    };
+    cl_image_format format = (cl_image_format) {
+        .image_channel_order = CL_RGBA,
+        .image_channel_data_type = CL_UNSIGNED_INT8
+    };
+    cl_mem render_buffer = clCreateImage(context, CL_MEM_WRITE_ONLY, &format, &imageDesc, NULL, &status);
+    //cl_mem render_buffer = clCreateBuffer(context, CL_MEM_WRITE_ONLY, RES * sizeof(rgb), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create render buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    
 
-    output_render_buffer = (rgb*) calloc(RES, sizeof(rgb));
+    output_render_buffer = (unsigned char*) calloc(RES, sizeof(char) * 4);
     
     cl_int real_nb_triangles = 0;
     Triangle3* triangles = (Triangle3*) calloc(MAX_NB_TRIANGLE, sizeof(Triangle3));
@@ -643,7 +658,18 @@ int main(int argc, char *argv[]) {
             // STEP 12: Read the output buffer back to the host
             if (DEBUG_RUN_INFO) printf("\nSTEP 12: Read the output buffer back to the host\n");
             
-            status = clEnqueueReadBuffer(cmdQueue, render_buffer, CL_TRUE, 0, RES *sizeof(rgb), output_render_buffer, 0, NULL,NULL);
+            status = clEnqueueReadImage(cmdQueue, 
+                render_buffer, 
+                CL_TRUE, 
+                (size_t[3]){0, 0, 0},
+                (size_t[3]){X_RES, Y_RES, 1}, 
+                0, 
+                0, 
+                output_render_buffer, 
+                0, 
+                NULL, 
+                NULL
+            );//status = clEnqueueReadBuffer(cmdQueue, render_buffer, CL_TRUE, 0, RES *sizeof(rgb), output_render_buffer, 0, NULL,NULL);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Read results\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
             new_frame = 1;
@@ -667,7 +693,11 @@ int main(int argc, char *argv[]) {
     frameRGB image = newFrame(X_RES, Y_RES);
     for (x = 0; x<X_RES; x++) {
         for (y = 0; y<Y_RES; y++) {
-            image.frame[y *X_RES + x] = output_render_buffer[y *X_RES + x];
+            image.frame[y *X_RES + x] = (rgb) {
+                ((float) (output_render_buffer[y*X_RES*4 +x*4 +0])) /255,
+                ((float) (output_render_buffer[y*X_RES*4 +x*4 +1])) /255,
+                ((float) (output_render_buffer[y*X_RES*4 +x*4 +2])) /255
+            };
         }
     }
     generateImg(image, "output");
