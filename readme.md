@@ -1,6 +1,6 @@
 # ErwanEngine2.0
 
-This is an early buggy access. If it works (houra!), be carefull with CPU and GPU T°, since they could heat a lot, and the program is not designed to deal with it.
+This is an early buggy access. If it works (houra!), be careful with CPU and GPU T°, since they could heat a lot, and the program is not designed to deal with it.
 
 Also, do not import obj file that have more than 600 triangles or 400 points. 
 
@@ -10,8 +10,6 @@ I'm not responsible of what could cause the execution of the program in any way.
 
 
 ## Install
-The program have been developped under kde neon 5.27
-
 You would probably need to install :
  * gcc
  * freeglut3
