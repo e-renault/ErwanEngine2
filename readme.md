@@ -19,7 +19,7 @@ You would probably need to install :
     intel-opencl-icd, ocl-icd-opencl-dev, opencl-headers
     
 
-Depending on you hardware, you could have to change DEVICE_ID and PLATFORM_ID in order to select you GPU (check first line of "opencl_renderer.c"). Mine is intel integrated Intel(R) UHD Graphics 620.
+Depending on you hardware, you could have to change DEVICE_ID and PLATFORM_ID in order to select you GPU (check firsts line of "main.c"). Mine is intel integrated Intel(R) UHD Graphics 620.
 
 ## Compile
 You can use the command :
@@ -69,8 +69,8 @@ This is what files you can use using "--file=" argument.
 ## Controls
 ### Camera
     `zqsd`    -> move
-    `space` -> go up
-    `e`     -> go down
+    `space`   -> go up
+    `e`       -> go down
     `oklm`    -> rotate camera
 
 
