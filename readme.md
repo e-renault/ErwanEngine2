@@ -1,5 +1,8 @@
 # ErwanEngine2.0
 
+![preview](https://github.com/e-renault/ErwanEngine2/_output/fox_black_white.png?raw=true)
+
+
 This is an early buggy access. If it works (houra!), be careful with CPU and GPU T°, since they could heat a lot, and the program is not designed to deal with it.
 
 Also, do not import obj file that have more than 600 triangles or 400 points. 

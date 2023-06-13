@@ -9,7 +9,7 @@
 #include "../math/lib3D_debug.h"
 
 int loadSceneFromFile(
-        char* path,  
+        char* path,
         int* nb_triangle,
         Triangle3* triangles,
         Texture* textures,
@@ -34,7 +34,7 @@ int loadSceneFromFile(
     }
 
     //TODO potential error
-    Point3 points[400];
+    Point3 points[1000];
     rgb color[400];
     color[0]=(rgb){1,1,1};
     char object[50][10] = {"missingno"};
@@ -109,24 +109,24 @@ int loadSceneFromFile(
     lights[(*nb_lights)++] = (LightSource3) {
         .color = (rgb) {0,0,1},
         .dir = (Vector3) {0,0,0},
-        .source = (Point3) {7,5,3},
-        .intensity = 10
+        .source = (Point3) {7,2,3},
+        .intensity = 12
     };
     lights[(*nb_lights)++] = (LightSource3) {
         .color = (rgb) {1,0,0},
         .dir = (Vector3) {0,0,0},
-        .source = (Point3) {0,5,7},
-        .intensity = 10
+        .source = (Point3) {0,2,7},
+        .intensity = 12
     };
     lights[(*nb_lights)++] = (LightSource3) {
         .color = (rgb) {0,1,0},
         .dir = (Vector3) {0,0,0},
-        .source = (Point3) {-7,5,3},
-        .intensity = 10
+        .source = (Point3) {-7,2,3},
+        .intensity = 12
     };
     
     //*nb_lights = 1;
-    *cam_coordinate = (Point3) {0, 1, 2.5};
+    *cam_coordinate = (Point3) {0.0, 0.1, 12.0};
     *cam_lookat = (Vector3) {0, 0, -1};
     *sky_light_dir = (Vector3) {-0.7, -1, -0.5};
     *sky_light_texture = (Texture) {
@@ -160,16 +160,17 @@ int loadCubeScene(
     float alphaz = sin(_rad) * 0.2f + 0.5f;
     float sin_alpha = sin(_rad) * 0.7f;
     float cos_alpha = cos(_rad) * 0.7f;
+    float k = 2;
 
-    Point3 pAL = {-sin_alpha,     alphaz,   -cos_alpha};
-    Point3 pBL = {cos_alpha,      alphaz,   -sin_alpha};
-    Point3 pCL = {sin_alpha,      alphaz,   cos_alpha};
-    Point3 pDL = {-cos_alpha,     alphaz,   sin_alpha};
+    Point3 pAL = {-sin_alpha*k,     alphaz,   -cos_alpha*k};
+    Point3 pBL = {cos_alpha*k,      alphaz,   -sin_alpha*k};
+    Point3 pCL = {sin_alpha*k,      alphaz,   cos_alpha*k};
+    Point3 pDL = {-cos_alpha*k,     alphaz,   sin_alpha*k};
 
-    Point3 pAU = {-sin_alpha,     alphaz+1,   -cos_alpha};
-    Point3 pBU = {cos_alpha,      alphaz+1,   -sin_alpha};
-    Point3 pCU = {sin_alpha,      alphaz+1,   cos_alpha};
-    Point3 pDU = {-cos_alpha,     alphaz+1,   sin_alpha};
+    Point3 pAU = {-sin_alpha*k,     alphaz+k,   -cos_alpha*k};
+    Point3 pBU = {cos_alpha*k,      alphaz+k,   -sin_alpha*k};
+    Point3 pCU = {sin_alpha*k,      alphaz+k,   cos_alpha*k};
+    Point3 pDU = {-cos_alpha*k,     alphaz+k,   sin_alpha*k};
 
     Point3 pla = {-150, -0.00, -100};
     Point3 plb = {50, -0.00, -100};
@@ -233,8 +234,8 @@ int loadCubeScene(
     for (;i--;) {
         textures[i] = (Texture) {
             .color1=random_colors[i %32], 
-            .color2=random_colors[i+1 %32], 
-            .color3=random_colors[i+2 %32]
+            .color2=random_colors[i %32], 
+            .color3=random_colors[i %32]
         };
     }
 
