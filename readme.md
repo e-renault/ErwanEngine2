@@ -1,7 +1,8 @@
 # ErwanEngine2.0
+Hello there =) 
+Here is my second version of the ErwanEngine, implemented in C using opencl to implement a 3D engine. It has been developped from scratch without  tutorial. 
 
-![preview](https://github.com/e-renault/ErwanEngine2/_output/fox_black_white.png?raw=true)
-
+![preview](https://github.com/e-renault/ErwanEngine2/blob/main/_output/fox_dark_light.png?raw=true)
 
 This is an early buggy access. If it works (houra!), be careful with CPU and GPU T°, since they could heat a lot, and the program is not designed to deal with it.
 
