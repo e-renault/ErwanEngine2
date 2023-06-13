@@ -84,7 +84,8 @@ __kernel void simpleCast (
         //get collision with triangle
         Point3 global_pos;Vector3 local_pos;Vector3 normal;float dist;
         int hit = getCollisionRayTriangle(triangles[i], ray, z_value_buffer, &global_pos, &local_pos, &normal, &dist);
-
+         
+           
         //update z_buffer
         if (hit) {
             obj_buffer = i;
@@ -95,16 +96,15 @@ __kernel void simpleCast (
         }
     }
 
-
     /*********** hard shadows ***********/
     rgb direct_light_buffer = sky_color.color2;
     if (obj_buffer != -1) {
         Ray3 r = (Ray3) {.p=point_buffer, .v=-sky_light_dir};
         
         for(i = 0; i<nb_triangle; i++) {
-            Point3 global_pos;Vector3 local_pos;Vector3 normal;float d;
-            int hit = getCollisionRayTriangle(triangles[i], r, FLT_MAX, &global_pos, &local_pos, &normal, &d);
-
+            Point3 global_pos;Vector3 local_pos;Vector3 normal;float dist;
+            int hit = getCollisionRayTriangle(triangles[i], r, FLT_MAX, &global_pos, &local_pos, &normal, &dist);
+            
             if (hit) {
                 direct_light_buffer = (direct_light_buffer * 0);
                 break;
@@ -146,8 +146,8 @@ __kernel void simpleCast (
     /*********** Build up final render ***********/
     rgb lignt_sum = cap((direct_light_buffer + scene_light_buffer));
     //rgb c = scene_light_buffer;                           //neon render
-    //rgb c = min(direct_light_buffer, color_value_buffer);   //only sun illum
-    rgb c = min(lignt_sum, color_value_buffer);           //both
+    rgb c = min(direct_light_buffer, color_value_buffer);   //only sun illum
+    //rgb c = min(lignt_sum, color_value_buffer);           //both
 
     uint4 color = (uint4)(
         c.x*255, 

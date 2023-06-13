@@ -9,13 +9,13 @@ Vector3 multiply(Matrix3 m, Vector3 v) {
     Vector3 ret;
 
     Vector3 x = *((EE_FLOAT3*) &(m.mat)) *v;
-    ret.x = x.x + x.y + x.z;
+    ret.x = sum(x);
 
     Vector3 y = *((EE_FLOAT3*) &(m.mat) + 1) *v;
-    ret.y = y.x + y.y + y.z;
+    ret.y = sum(y);
 
     Vector3 z = *((EE_FLOAT3*) &(m.mat) + 2) *v;
-    ret.z = z.x + z.y + z.z;
+    ret.z = sum(z);
 
     return ret;
 }

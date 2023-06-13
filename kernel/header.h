@@ -48,6 +48,11 @@ typedef struct __attribute__ ((packed)) Ray3 {
   Vector3 v;
 } Ray3;
 
+typedef struct __attribute__ ((packed)) Sphere3 {
+  Point3 center;
+  EE_FLOAT radius;
+} Sphere3;
+
 //useless datas ?
 typedef struct __attribute__ ((packed)) Triangle3 {
   Point3 p[3];//useless ?
@@ -55,7 +60,9 @@ typedef struct __attribute__ ((packed)) Triangle3 {
   Plane3 pl;
   Matrix3 base;//useless ?
   Matrix3 binv;
+  Sphere3 sphere;//useless ?
 } Triangle3;
+
 
 typedef struct __attribute__ ((packed)) Texture {
     EE_INT x_res;

@@ -2,6 +2,10 @@
 #define M_OBJECT3_H_
 
 #include "../kernel/header.h"
+#define max(a,b) \
+({ __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    _a > _b ? _a : _b; })
 
 Plane3 newPlane3(Vector3 v1, Vector3 v2, Point3 p) {
     Plane3 ret;
@@ -37,6 +41,12 @@ Triangle3 newTriangle3(Point3 p1, Point3 p2, Point3 p3) {
     ret.binv.mat.s[2*4 +2] = ret.pl.n.z;
     
     ret.base = invert(ret.binv);
+
+    Point3 p = scale_vector3((EE_FLOAT) 1/3, add_vector3(p1, add_vector3(p2, p3)));
+    EE_FLOAT d = max(getLength(p1, p), max(getLength(p2, p), getLength(p3, p)));
+
+    ret.sphere.center=p;
+    ret.sphere.radius=d;
     return ret;
 }
 

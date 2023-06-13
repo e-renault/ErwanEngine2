@@ -1,11 +1,11 @@
 # ErwanEngine2.0
 
-![preview](https://github.com/e-renault/ErwanEngine2/_output/fox_black_white.png?raw=true)
+![preview](https://github.com/e-renault/ErwanEngine2/_output/cheval_hd_light_dark.png?raw=true)
 
 
 This is an early buggy access. If it works (houra!), be careful with CPU and GPU T°, since they could heat a lot, and the program is not designed to deal with it.
 
-Also, do not import obj file that have more than 600 triangles or 400 points. 
+Also, do not import obj file that have more than 600 triangles or 1000 points. 
 
 Currently, lights are experimental and cannot be changed (hard coded stuffs).
 
@@ -41,9 +41,9 @@ optional:
 optional:
 ```
 --file  [OBJ_FILE_TO_LOAD]              (default:"default.obj")  <- you should use one of the Availables scenes (see section "Available scenes").
---fov   [FIELD_OF_VIEW_IN_DEGREE]       (default:70)
---xres  [HORISONTAL_RESOLUTION_IN_PX]   (default:800)
---yres  [VERTICAL_RESOLUTION_IN_PX]     (default:600)
+--FOV   [FIELD_OF_VIEW_IN_DEGREE]       (default:70)
+--XRES  [HORISONTAL_RESOLUTION_IN_PX]   (default:800)
+--YRES  [VERTICAL_RESOLUTION_IN_PX]     (default:600)
 ```
 
 debug (experimental):

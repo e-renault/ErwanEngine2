@@ -367,9 +367,9 @@ void extract_params(int argc, char *argv[]) {
         static struct option long_options[] = {
             {"max_triangle",    required_argument, 0,  't' },
             {"max_lightsource", required_argument, 0,  'l' },
-            {"xres",            required_argument, 0,  'x' },
-            {"yres",            required_argument, 0,  'y' },
-            {"fov",             required_argument, 0,  'f' },
+            {"XRES",            required_argument, 0,  'x' },
+            {"YRES",            required_argument, 0,  'y' },
+            {"FOV",             required_argument, 0,  'f' },
             {"file",            required_argument, 0,  'o' },
             {"path",            required_argument, 0,  'p' },
             {"FPS",             no_argument,       &SHOW_FPS,  1 },

@@ -58,7 +58,7 @@ float dotProduct(Vector3 v1, Vector3 v2) {
     return ret;
 }
 
-Vector3 static inline scale_vector3(float s, Vector3 v) {
+Vector3 scale_vector3(float s, Vector3 v) {
     return (Vector3) {
         s* v.x,
         s* v.y,

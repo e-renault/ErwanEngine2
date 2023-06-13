@@ -7,14 +7,14 @@
 
 Point3 collisionRayPlane(Plane3 pl, Ray3 r, float* t);
 Point3 collisionRayPlane(Plane3 pl, Ray3 r, float* t) {
-    float3 tmp = pl.n * r.v;
-    float div = tmp.x + tmp.y + tmp.z;
+    EE_FLOAT3 tmp = pl.n * r.v;
+    float div = sum(tmp);
     //float div = (pl.n.x * r.v.x + pl.n.y * r.v.y + pl.n.z * r.v.z);
     
     if (div == 0) div = FLT_MIN;
     
-    float3 tmp2 = pl.n * r.p;
-    *t = -(tmp2.x + tmp2.y + tmp2.z + pl.off) / div;
+    EE_FLOAT3 tmp2 = pl.n * r.p;
+    *t = -(sum(tmp2) + pl.off) / div;
     //*t = -(pl.n.x * r.p.x + pl.n.y * r.p.y + pl.n.z * r.p.z + pl.off) / div;
     
     return r.p + (*t) * r.v;
@@ -39,8 +39,51 @@ Vector3 getLocalPosition(Matrix3 b, Point3 o, Point3 p) {
     return ret;
 }
 
+int getCollisionRaySphere(Sphere3 sp, Ray3 r, float max_dist, Point3* global_point, Vector3* local_point, Vector3* normal, float* dist);
+int getCollisionRaySphere(Sphere3 sp, Ray3 r, 
+    float max_dist, 
+    Point3* global_point, 
+    Vector3* local_point, 
+    Vector3* normal, 
+    float* dist) {
+        
+    EE_FLOAT coefa = sum(r.v * r.v);
+    EE_FLOAT3 sub = r.p - sp.center;
+    EE_FLOAT coefb = 2* sum(sub * r.v);
+    EE_FLOAT coefc = sum(sub*sub) - sp.radius*sp.radius;
+    EE_FLOAT delta = coefb * coefb - 4 * coefa * coefc;
+
+    if (delta > 0){
+        EE_FLOAT t = (-coefb - sqrt(delta)) / (2 * coefa);
+        if (t <= 0.0001) {//take second point
+            t = (-coefb + sqrt(delta)) / (2 * coefa);
+        }
+        if (t <= 0.0001) {//prevent auto-detect collision
+            return 0;
+        }
+        Vector3 p = r.v * t + r.p;
+        *dist = t;
+        *global_point = p;
+        *normal =  p - sp.center;
+        
+        return 1;
+    }
+
+    return 0;
+}
+
 int getCollisionRayTriangle(Triangle3 t, Ray3 r, float max_dist, Point3* global_point, Vector3* local_point, Vector3* normal, float* dist);
 int getCollisionRayTriangle(Triangle3 t, Ray3 r, float max_dist, Point3* global_point, Vector3* local_point, Vector3* normal, float* dist) {
+    
+    
+
+    Point3 global_pos;Vector3 local_pos;Vector3 normal_sphere;float dist_sphere;
+    int hit = getCollisionRaySphere(t.sphere, r, max_dist, &global_pos, &local_pos, &normal_sphere, &dist_sphere);
+    
+    if (! hit) return 0;
+    if ( dist_sphere > max_dist ) return 0;
+    
+
     *global_point = collisionRayPlane(t.pl, r, dist);
     if ( *dist > max_dist ) return 0;
 
@@ -56,5 +99,6 @@ int getCollisionRayTriangle(Triangle3 t, Ray3 r, float max_dist, Point3* global_
 
     return ret;
 }
+
 
 #endif // M_OBJECT3_COLLISION_H_

@@ -18,15 +18,19 @@ Vector3 crossProduct(Vector3 v1, Vector3 v2) {
     return ret;
 }
 
-float dotProduct(Vector3 v1, Vector3 v2) {
+EE_FLOAT inline sum(Vector3 v) {
+    return v.x + v.y + v.z;
+}
+
+EE_FLOAT dotProduct(Vector3 v1, Vector3 v2) {
     Vector3 vm = v1 * v2;
-    float ret = vm.x + vm.y + vm.z;
+    EE_FLOAT ret = sum(vm);
     return ret;
 }
 
 EE_FLOAT getLength2(Vector3 v) {
     Vector3 vp = v * v;
-    EE_FLOAT ret = sqrt(vp.x + vp.y + vp.z);
+    EE_FLOAT ret = sqrt(sum(vp));
     return ret;
 }
 
@@ -36,7 +40,7 @@ EE_FLOAT getLength(Point3 p1, Point3 p2) {
 }
 
 Vector3 getNorm(Vector3 v) {
-    float len = 1/getLength2(v);
+    EE_FLOAT len = 1/getLength2(v);
     return v*len;
 }
 
@@ -44,12 +48,12 @@ Vector3 getNorm2(Vector3 v1, Vector3 v2) {
     return getNorm(crossProduct(v1,v2));
 }
 
-float getAngle(Vector3 v1, Vector3 v2) {
-  float ret;
+EE_FLOAT getAngle(Vector3 v1, Vector3 v2) {
+  EE_FLOAT ret;
 
   Vector3 vup = v1*v2;
-  float up = (vup.x + vup.y + vup.z);
-  float div = getLength2(v1) * getLength2(v2);
+  EE_FLOAT up = sum(vup);
+  EE_FLOAT div = getLength2(v1) * getLength2(v2);
   ret = EE_ARCCOS(up/div);
 
   return ret;

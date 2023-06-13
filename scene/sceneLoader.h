@@ -126,7 +126,7 @@ int loadSceneFromFile(
     };
     
     //*nb_lights = 1;
-    *cam_coordinate = (Point3) {0.0, 0.1, 12.0};
+    *cam_coordinate = (Point3) {0.5, 0.5, 2.0};
     *cam_lookat = (Vector3) {0, 0, -1};
     *sky_light_dir = (Vector3) {-0.7, -1, -0.5};
     *sky_light_texture = (Texture) {
