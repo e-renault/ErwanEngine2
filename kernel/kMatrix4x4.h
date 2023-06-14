@@ -23,7 +23,7 @@ Vector3 multiply(Matrix3 m, Vector3 v) {
 //TODO: paralellize
 Vector3 rotateAround(Vector3 v, Vector3 unit, EE_FLOAT tetha) {
     Vector3 ret;
-    float costetha = cos(tetha);
+    EE_FLOAT costetha = cos(tetha);
 
     Vector3 p1 = costetha * v;
     Vector3 p2 = ((1-costetha) * dotProduct(v, unit)) * unit;

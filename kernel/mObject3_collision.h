@@ -5,11 +5,11 @@
 #include "../kernel/kVector3.h"
 #include "../kernel/kMatrix4x4.h"
 
-Point3 collisionRayPlane(Plane3 pl, Ray3 r, float* t);
-Point3 collisionRayPlane(Plane3 pl, Ray3 r, float* t) {
+Point3 collisionRayPlane(Plane3 pl, Ray3 r, EE_FLOAT* t);
+Point3 collisionRayPlane(Plane3 pl, Ray3 r, EE_FLOAT* t) {
     EE_FLOAT3 tmp = pl.n * r.v;
-    float div = sum(tmp);
-    //float div = (pl.n.x * r.v.x + pl.n.y * r.v.y + pl.n.z * r.v.z);
+    EE_FLOAT div = sum(tmp);
+    //EE_FLOAT div = (pl.n.x * r.v.x + pl.n.y * r.v.y + pl.n.z * r.v.z);
     
     if (div == 0) div = FLT_MIN;
     
@@ -20,8 +20,8 @@ Point3 collisionRayPlane(Plane3 pl, Ray3 r, float* t) {
     return r.p + (*t) * r.v;
 }
 
-Point3 collisionRayPlane_MöllerTrumbore(Plane3 pl, Ray3 r, float* t);
-Point3 collisionRayPlane_MöllerTrumbore(Plane3 pl, Ray3 r, float* t) {
+Point3 collisionRayPlane_MöllerTrumbore(Plane3 pl, Ray3 r, EE_FLOAT* t);
+Point3 collisionRayPlane_MöllerTrumbore(Plane3 pl, Ray3 r, EE_FLOAT* t) {
     //TODO implement
     return (Point3) {0, 0, 0};
 }
@@ -39,13 +39,13 @@ Vector3 getLocalPosition(Matrix3 b, Point3 o, Point3 p) {
     return ret;
 }
 
-int getCollisionRaySphere(Sphere3 sp, Ray3 r, float max_dist, Point3* global_point, Vector3* local_point, Vector3* normal, float* dist);
+int getCollisionRaySphere(Sphere3 sp, Ray3 r, EE_FLOAT max_dist, Point3* global_point, Vector3* local_point, Vector3* normal, EE_FLOAT* dist);
 int getCollisionRaySphere(Sphere3 sp, Ray3 r, 
-    float max_dist, 
+    EE_FLOAT max_dist, 
     Point3* global_point, 
     Vector3* local_point, 
     Vector3* normal, 
-    float* dist) {
+    EE_FLOAT* dist) {
         
     EE_FLOAT coefa = sum(r.v * r.v);
     EE_FLOAT3 sub = r.p - sp.center;
@@ -72,24 +72,22 @@ int getCollisionRaySphere(Sphere3 sp, Ray3 r,
     return 0;
 }
 
-int getCollisionRayTriangle(Triangle3 t, Ray3 r, float max_dist, Point3* global_point, Vector3* local_point, Vector3* normal, float* dist);
-int getCollisionRayTriangle(Triangle3 t, Ray3 r, float max_dist, Point3* global_point, Vector3* local_point, Vector3* normal, float* dist) {
+int getCollisionRayTriangle(Triangle3 t, Ray3 r, EE_FLOAT max_dist, Point3* global_point, Vector3* local_point, Vector3* normal, EE_FLOAT* dist);
+int getCollisionRayTriangle(Triangle3 t, Ray3 r, EE_FLOAT max_dist, Point3* global_point, Vector3* local_point, Vector3* normal, EE_FLOAT* dist) {
     
-    
-
-    Point3 global_pos;Vector3 local_pos;Vector3 normal_sphere;float dist_sphere;
+    /** Sphere optimisation */
+    Point3 global_pos;Vector3 local_pos;Vector3 normal_sphere;EE_FLOAT dist_sphere;
     int hit = getCollisionRaySphere(t.sphere, r, max_dist, &global_pos, &local_pos, &normal_sphere, &dist_sphere);
-    
     if (! hit) return 0;
-    if ( dist_sphere > max_dist ) return 0;
-    
 
+    /** get Intersection Point */
     *global_point = collisionRayPlane(t.pl, r, dist);
     if ( *dist > max_dist ) return 0;
 
+    /** Check if in triangle */
     *local_point = multiply(t.base, *global_point - t.pl.p);
 
-    float angle = getAngle(t.pl.n, r.v);
+    EE_FLOAT angle = getAngle(t.pl.n, r.v);
     *normal = (angle>0.5) ? t.pl.n: -(t.pl.n);
     
     int ret = 0 < local_point->x;

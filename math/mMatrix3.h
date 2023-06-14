@@ -19,7 +19,7 @@ Matrix3 invert(Matrix3 m) {
     ret.mat.sA = + m.mat.s0 * m.mat.s5 - m.mat.s1 * m.mat.s4;
 
     // Compute determinant
-    float det;
+    EE_FLOAT det;
     det = m.mat.s0 * ret.mat.s0 + m.mat.s1 * ret.mat.s4 + m.mat.s2 * ret.mat.s8;
 
     // anti zero detection
@@ -44,7 +44,7 @@ Matrix3 invert(Matrix3 m) {
 //TODO: paralellize
 Vector3 rotateAround(Vector3 v, Vector3 unit, EE_FLOAT tetha) {
     Vector3 ret;
-    float costetha = cos(tetha);
+    EE_FLOAT costetha = cos(tetha);
 
     Vector3 p1 = scale_vector3(costetha, v);
     Vector3 p2 = scale_vector3((1-costetha) * dotProduct(v, unit), unit);

@@ -54,21 +54,21 @@ int loadSceneFromFile(
             sscanf(rest, " %s", object[object_index]);
             object_index++;
         } else if (!strcmp(identifier, "v")) {
-            float x, y, z;
+            EE_FLOAT x, y, z;
             sscanf(rest, " %f %f %f", &x, &y, &z);
             points[point_index] = (Point3) {x, y, z};
             point_index++;
             
             //printPoint3(points[point_index-1]);printf("\n");
         } else if (!strcmp(identifier, "vt")) {
-            float c1, c2;
+            EE_FLOAT c1, c2;
             sscanf(rest, " %f %f", &c1, &c2);
             color[color_index] = (rgb) {c1, c2, 1-(c1+c2)};
             color_index++;
             
             //printf("(%f, %f, %f)\n", color[color_index-1].r, color[color_index-1].r, color[color_index-1].r);
         } else if (!strcmp(identifier, "vc")) {
-            float r, g, b;
+            EE_FLOAT r, g, b;
             sscanf(rest, " %f %f %f", &r, &g, &b);
             color[color_index] = (rgb) {r, g, b};
             color_index++;
@@ -238,6 +238,32 @@ int loadCubeScene(
             .color3=random_colors[i %32]
         };
     }
+    *nb_lights = 0;
+    lights[(*nb_lights)++] = (LightSource3) {
+        .color = (rgb) {0.80,0.75,0.77},
+        .dir = (Vector3) {0,0,0},
+        .source = (Point3) {0,alphaz+k/2, 0},
+        .intensity = 12
+    };
+    lights[(*nb_lights)++] = (LightSource3) {
+        .color = (rgb) {cos(_rad), cos(_rad+3.14*0.666), cos(_rad+3.14*1.333)},
+        .dir = (Vector3) {0,0,0},
+        .source = (Point3) {cos_alpha*k*2,0.1,sin_alpha*k*2},
+        .intensity = 12
+    };
+    lights[(*nb_lights)++] = (LightSource3) {
+        .color = (rgb) {sin(_rad), sin(_rad+3.14*0.666), sin(_rad+3.14*1.333)},
+        .dir = (Vector3) {0,0,0},
+        .source = (Point3) {cos_alpha*k*2,0.1,cos_alpha*k*2},
+        .intensity = 12
+    };
+    
+    *sky_light_dir = (Vector3) {-0.7, -1, -0.5};
+    *sky_light_texture = (Texture) {
+        .color1={0.58,  0.78,  0.92},
+        .color2={1.3,   1.3,   1.3},//sky lum base_ref
+        .color3={0,     0,     1}
+    };
 
     return *nb_triangle;
 }

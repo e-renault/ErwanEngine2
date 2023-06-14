@@ -145,8 +145,8 @@ __kernel void simpleCast (
 
     /*********** Build up final render ***********/
     rgb lignt_sum = cap((direct_light_buffer + scene_light_buffer));
-    //rgb c = scene_light_buffer;                           //neon render
-    rgb c = min(direct_light_buffer, color_value_buffer);   //only sun illum
+    rgb c = scene_light_buffer;                           //neon render
+    //rgb c = min(direct_light_buffer, color_value_buffer);   //only sun illum
     //rgb c = min(lignt_sum, color_value_buffer);           //both
 
     uint4 color = (uint4)(
