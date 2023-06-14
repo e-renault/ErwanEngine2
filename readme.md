@@ -4,13 +4,13 @@ Here is my second version of the ErwanEngine, implemented in C using opencl to i
 
 ![preview](https://github.com/e-renault/ErwanEngine2/blob/main/_output/cheval_hd_light_dark.png?raw=true)
 
-This is an early buggy access. If it works (houra!), be careful with CPU and GPU T°, since they could heat a lot, and the program is not designed to deal with it.
+**This is an early buggy access**
 
-Also, do not import obj file that have more than 600 triangles or 1000 points. 
+The program can lead to a high CPU and GPU T° since it has not be designed to take care of hardware capabilities.
+
+Do not import obj file that have more than 600 triangles or 1000 points. 
 
 Currently, lights are experimental and cannot be changed (hard coded stuffs).
-
-I'm not responsible of what could cause the execution of the program in any way.
 
 
 ## Install
@@ -57,6 +57,7 @@ debug (experimental):
 --KINFO
 --HINFO
 ```
+
 ## Available scenes
 This is what files you can use using "--file=" argument.
 
@@ -77,11 +78,11 @@ This is what files you can use using "--file=" argument.
     `e`       -> go down
     `oklm`    -> rotate camera
 
-
-### Sun (experimental)
-    `t/g`  -> increase/decrease x vector property
-    `y/h`  -> increase/decrease y vector property
-    `u/j`  -> increase/decrease z vector property
+### Misk (experimental)
+    `r`    -> go to bouncing box mode
+    `t/g`  -> increase/decrease sun x vector property 
+    `y/h`  -> increase/decrease sun y vector property
+    `u/j`  -> increase/decrease sun z vector property
 
 ### quit (properly)
     `x`
