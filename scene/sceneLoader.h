@@ -180,12 +180,12 @@ int loadCubeScene(
     triangles[i++] = newTriangle3(pla, plb, plc);
 
     triangles[i++] = newTriangle3(pAL, pBL, pAU);
-    //triangles[i++] = newTriangle3(pBL, pCL, pBU);
+    triangles[i++] = newTriangle3(pBL, pCL, pBU);
     triangles[i++] = newTriangle3(pCL, pDL, pCU);
     //triangles[i++] = newTriangle3(pDL, pAL, pDU);
 
     triangles[i++] = newTriangle3(pAU, pBU, pBL);
-    //triangles[i++] = newTriangle3(pBU, pCU, pCL);
+    triangles[i++] = newTriangle3(pBU, pCU, pCL);
     triangles[i++] = newTriangle3(pCU, pDU, pDL);
     //triangles[i++] = newTriangle3(pDU, pAU, pAL);
     
@@ -258,13 +258,6 @@ int loadCubeScene(
         .intensity = 12
     };
     
-    *sky_light_dir = (Vector3) {-0.7, -1, -0.5};
-    *sky_light_texture = (Texture) {
-        .color1={0.58,  0.78,  0.92},
-        .color2={1.3,   1.3,   1.3},//sky lum base_ref
-        .color3={0,     0,     1}
-    };
-
     return *nb_triangle;
 }
 

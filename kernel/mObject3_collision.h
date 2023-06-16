@@ -9,35 +9,15 @@ Point3 collisionRayPlane(Plane3 pl, Ray3 r, EE_FLOAT* t);
 Point3 collisionRayPlane(Plane3 pl, Ray3 r, EE_FLOAT* t) {
     EE_FLOAT3 tmp = pl.n * r.v;
     EE_FLOAT div = sum(tmp);
-    //EE_FLOAT div = (pl.n.x * r.v.x + pl.n.y * r.v.y + pl.n.z * r.v.z);
     
     if (div == 0) div = FLT_MIN;
     
     EE_FLOAT3 tmp2 = pl.n * r.p;
     *t = -(sum(tmp2) + pl.off) / div;
-    //*t = -(pl.n.x * r.p.x + pl.n.y * r.p.y + pl.n.z * r.p.z + pl.off) / div;
     
     return r.p + (*t) * r.v;
 }
 
-Point3 collisionRayPlane_MöllerTrumbore(Plane3 pl, Ray3 r, EE_FLOAT* t);
-Point3 collisionRayPlane_MöllerTrumbore(Plane3 pl, Ray3 r, EE_FLOAT* t) {
-    //TODO implement
-    return (Point3) {0, 0, 0};
-}
-
-
-//TODO remove caus' unused anymore
-Vector3 getLocalPosition(Matrix3 b, Point3 o, Point3 p);
-Vector3 getLocalPosition(Matrix3 b, Point3 o, Point3 p) {
-    Vector3 ret;
-
-    Vector3 off = -o;
-
-    ret = multiply(b, (p + off));
-
-    return ret;
-}
 
 int getCollisionRaySphere(Sphere3 sp, Ray3 r, EE_FLOAT max_dist, Point3* global_point, Vector3* local_point, Vector3* normal, EE_FLOAT* dist);
 int getCollisionRaySphere(Sphere3 sp, Ray3 r, 
@@ -79,6 +59,15 @@ int getCollisionRayTriangle(Triangle3 t, Ray3 r, EE_FLOAT max_dist, Point3* glob
     Point3 global_pos;Vector3 local_pos;Vector3 normal_sphere;EE_FLOAT dist_sphere;
     int hit = getCollisionRaySphere(t.sphere, r, max_dist, &global_pos, &local_pos, &normal_sphere, &dist_sphere);
     if (! hit) return 0;
+
+    /** Juste pour le bonheur des yeux*/
+    /** if (t.sphere.radius < 1) {
+        if (dist_sphere > max_dist) return 0;
+        *dist = dist_sphere;
+        *global_point = global_pos;
+        *normal = normal_sphere;
+        return 1;
+    }*/
 
     /** get Intersection Point */
     *global_point = collisionRayPlane(t.pl, r, dist);

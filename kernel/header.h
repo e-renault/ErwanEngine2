@@ -10,27 +10,28 @@
   #else
     #include <CL/cl.h>
   #endif
-#endif
 
-#ifndef EE_FLOAT
-  #ifndef __OPENCL_VERSION__
-    #define EE_ARCCOS(c) (acos(c)/M_PI)
-    #define EE_FLOAT cl_float
-    #define EE_FLOAT3 cl_float3
-    #define EE_FLOAT4x4 cl_float16
-    #define EE_INT cl_int
-  #else
-    #define EE_ARCCOS(c) (acospi(c))
-    #define EE_FLOAT float
-    #define EE_FLOAT3 float3
-    #define EE_FLOAT4x4 float16
-    #define EE_INT int
-  #endif
+  #define EE_ARCCOS(c) (acos(c)/M_PI)
+  #define EE_FLOAT cl_float
+  #define EE_FLOAT3 cl_float3
+  #define EE_FLOAT4x4 cl_float16
+  #define EE_INT cl_int
+  #define EE_CONST const
+#else
+  #define EE_ARCCOS(c) (acospi(c))
+  #define EE_FLOAT float
+  #define EE_FLOAT3 float3
+  #define EE_FLOAT4x4 float16
+  #define EE_INT int
+  #define EE_CONST __constant
+  #define PI 3.14159 
 #endif
 
 typedef EE_FLOAT3 Vector3;
 typedef EE_FLOAT3 Point3;
 typedef EE_FLOAT3 rgb;
+EE_CONST Vector3 UP = {0, 1, 0};
+EE_CONST Vector3 DOWN = {0, -1, 0};
 
 typedef union Matrix3 {
   EE_FLOAT __attribute__ ((packed)) val[4][4];
@@ -60,9 +61,8 @@ typedef struct __attribute__ ((packed)) Triangle3 {
   Plane3 pl;
   Matrix3 base;//useless ?
   Matrix3 binv;
-  Sphere3 sphere;//useless ?
+  Sphere3 sphere;
 } Triangle3;
-
 
 typedef struct __attribute__ ((packed)) Texture {
     EE_INT x_res;

@@ -2,22 +2,11 @@
 #include "kernel/texture.h"
 #include "kernel/color.h"
 
-__constant const Vector3 up = {0, 1, 0};//constant vector
-#define PI 3.14159
 
 __kernel void simpleCast (
         int x_res,
         int y_res,
         float FOV,
-
-        //__global float* z_value_buffer,
-        //__global Vector3* normal_buffer,
-        //__global Point3* point_buffer,
-        //__global rgb* color_value_buffer,
-        //__global int* obj_buffer,
-        //__global Ray3* ray_buffer,
-        //__global rgb* direct_light_buffer,
-        //__global rgb* scene_light_buffer,
 
         __write_only image2d_t final_outut_buffer,
 
@@ -31,7 +20,22 @@ __kernel void simpleCast (
         Texture sky_color,
 
         Point3 cam_point,
-        Vector3 cam_dir
+        Vector3 cam_dir,
+
+
+
+        __read_only image2d_t texture_map,
+        __read_only image2d_t normal_map
+
+        //__global float* z_value_buffer,
+        //__global Vector3* normal_buffer,
+        //__global Point3* point_buffer,
+        //__global rgb* color_value_buffer,
+        //__global int* obj_buffer,
+        //__global Ray3* ray_buffer,
+        //__global rgb* direct_light_buffer,
+        //__global rgb* scene_light_buffer,
+
         ) {
     int i, j;
 
@@ -59,16 +63,16 @@ __kernel void simpleCast (
 
     /*********** Init cam ***********/
     Vector3 vd_ray = cam_dir;
-    vd_ray = rotateAround(vd_ray, up, theta_x);
+    vd_ray = rotateAround(vd_ray, UP, theta_x);
     
-    Vector3 right = crossProduct(vd_ray, up);
+    Vector3 right = crossProduct(vd_ray, UP);
     vd_ray = rotateAround(vd_ray, right, theta_y);
 
     Ray3 ray = (Ray3){.p=cam_point, .v=vd_ray};
     
 
     /*********** Sky color ***********/
-    float theta = getAngle(vd_ray, up);
+    float theta = getAngle(vd_ray, UP);
 
     if (theta > 0.5){
         float heigth = 2*(theta - 0.5);
@@ -145,9 +149,9 @@ __kernel void simpleCast (
 
     /*********** Build up final render ***********/
     rgb lignt_sum = cap((direct_light_buffer + scene_light_buffer));
-    rgb c = scene_light_buffer;                           //neon render
+    //rgb c = scene_light_buffer;                           //neon render
     //rgb c = min(direct_light_buffer, color_value_buffer);   //only sun illum
-    //rgb c = min(lignt_sum, color_value_buffer);           //both
+    rgb c = min(lignt_sum, color_value_buffer);           //both
 
     uint4 color = (uint4)(
         c.x*255, 

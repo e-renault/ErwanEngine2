@@ -2,10 +2,7 @@
 #define M_OBJECT3_H_
 
 #include "../kernel/header.h"
-#define max(a,b) \
-({ __typeof__ (a) _a = (a); \
-    __typeof__ (b) _b = (b); \
-    _a > _b ? _a : _b; })
+#define max(a,b) (a > b ? a : b)
 
 Plane3 newPlane3(Vector3 v1, Vector3 v2, Point3 p) {
     Plane3 ret;
