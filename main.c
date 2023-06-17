@@ -36,7 +36,7 @@ static float FOV = 70.0;
 static int RES = 480000;
 static char scene_path[] = "src/obj/";
 static char obj_file_name[] = "default.obj";
-static char texture_map_path[] = "src/texture/gimp_raw.ppm";
+static char texture_map_path[] = "src/texture/crate.ppm";
 static char normal_map_path[] = "src/texture/gimp_raw.ppm";
 static int SHOW_FPS = 0;
 static int DEBUG_GLOBAL_INFO = 0;
@@ -261,6 +261,7 @@ int main(int argc, char *argv[]) {
 
     int texture_map_res_x, texture_map_res_y;
     texture_map = load_file(texture_map_path, &texture_map_res_x, &texture_map_res_y);
+    //save_to_file(texture_map, "test.ppm", texture_map_res_x, texture_map_res_y);
 
     int normal_map_res_x, normal_map_res_y;
     normal_map = load_file(normal_map_path, &normal_map_res_x, &normal_map_res_y);
@@ -359,15 +360,11 @@ int main(int argc, char *argv[]) {
         if (cube_demo) {
             status = loadCubeScene(
                 path, 
-                &real_nb_triangles, 
-                triangles, 
+                &real_nb_triangles, triangles, 
                 textures, 
-                &real_nb_lights, 
-                lights,
-                &cam_coordinate,
-                &cam_lookat,
-                &sky_light_dir,
-                &sky_light_texture
+                &real_nb_lights, lights,
+                &cam_coordinate, &cam_lookat,
+                &sky_light_dir, &sky_light_texture
             );
             scene_changed = 1;
         }

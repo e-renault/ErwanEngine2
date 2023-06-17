@@ -3,18 +3,6 @@
 
 #include "../kernel/header.h"
 
-//TODO this is an horrible conversion
-//TODO remove unused
-Vector3 static inline toVector(Point3 p) {
-    return *((Vector3*) &p);
-}
-
-//TODO this is an horrible conversion
-//TODO remove unused
-Point3 static inline toPoint(Vector3 v) {
-    return *((Point3*) &v);
-}
-
 Vector3 newVector(Point3 p1, Point3 p2) {
     return (Vector3) {
         p2.x - p1.x, 

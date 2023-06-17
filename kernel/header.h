@@ -13,6 +13,7 @@
 
   #define EE_ARCCOS(c) (acos(c)/M_PI)
   #define EE_FLOAT cl_float
+  #define EE_FLOAT2 cl_float2
   #define EE_FLOAT3 cl_float3
   #define EE_FLOAT4x4 cl_float16
   #define EE_INT cl_int
@@ -20,6 +21,7 @@
 #else
   #define EE_ARCCOS(c) (acospi(c))
   #define EE_FLOAT float
+  #define EE_FLOAT2 float2
   #define EE_FLOAT3 float3
   #define EE_FLOAT4x4 float16
   #define EE_INT int
@@ -65,11 +67,13 @@ typedef struct __attribute__ ((packed)) Triangle3 {
 } Triangle3;
 
 typedef struct __attribute__ ((packed)) Texture {
-    EE_INT x_res;
-    EE_INT y_res;
-    rgb color1;
-    rgb color2;
-    rgb color3;
+    EE_FLOAT2 v1;
+    EE_FLOAT2 v2;
+    EE_FLOAT2 voff;
+    
+    rgb color1;//TODO: Deprecated
+    rgb color2;//TODO: Deprecated
+    rgb color3;//TODO: Deprecated
 } Texture;
 
 typedef struct __attribute__ ((packed)) LightSource3 {

@@ -96,7 +96,7 @@ __kernel void simpleCast (
             z_value_buffer = dist;
             normal_buffer = normal;
             point_buffer = global_pos;
-            color_value_buffer = getColor(textures[i], local_pos.x, local_pos.y);
+            color_value_buffer = getColor2(textures[i], texture_map, local_pos.x, local_pos.y);
         }
     }
 
@@ -123,7 +123,7 @@ __kernel void simpleCast (
     rgb scene_light_buffer = (rgb) {0,0,0};
     if (obj_buffer != -1) {
         for(j = 0; j<nb_lights; j++) {
-            Vector3 v = getNorm(newVector(point_buffer, lights[j].source));
+            Vector3 v = getNorm(lights[j].source - point_buffer);
             Ray3 r = (Ray3) {.p=point_buffer, .v=v};
             
             float max_dist = getLength(lights[j].source, point_buffer);
@@ -150,8 +150,8 @@ __kernel void simpleCast (
     /*********** Build up final render ***********/
     rgb lignt_sum = cap((direct_light_buffer + scene_light_buffer));
     //rgb c = scene_light_buffer;                           //neon render
-    //rgb c = min(direct_light_buffer, color_value_buffer);   //only sun illum
-    rgb c = min(lignt_sum, color_value_buffer);           //both
+    rgb c = min(direct_light_buffer, color_value_buffer);   //only sun illum
+    //rgb c = min(lignt_sum, color_value_buffer);           //both
 
     uint4 color = (uint4)(
         c.x*255, 
@@ -159,5 +159,6 @@ __kernel void simpleCast (
         c.z*255, 
         255
     );
+    
     write_imageui(final_outut_buffer, (int2)(x, y), color);
 } 

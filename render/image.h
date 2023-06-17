@@ -39,7 +39,7 @@ unsigned char* load_file(char* location, int* x_size, int* y_size);
 unsigned char* load_file(char* location, int* x_size, int* y_size) {
     
     FILE* ppmfile = fopen(location, "rb");
-    printf("load file: %s\n", location);
+    //printf("load file: %s\n", location);
 
     if (ppmfile == NULL) return 0;
 
@@ -76,9 +76,9 @@ unsigned char* load_file(char* location, int* x_size, int* y_size) {
             for (x = *x_size; x-- ;) {
                 char xyz[3];
                 fread(xyz, 1, 3, ppmfile);
-                *(image_RGBA + y*(*x_size)*4 + x*4 +0) = xyz[0]*normalizer;
-                *(image_RGBA + y*(*x_size)*4 + x*4 +1) = xyz[1]*normalizer;
-                *(image_RGBA + y*(*x_size)*4 + x*4 +2) = xyz[2]*normalizer;
+                *(image_RGBA + y*(*x_size)*4 + (*x_size -x-1)*4 +0) = xyz[0]*normalizer;
+                *(image_RGBA + y*(*x_size)*4 + (*x_size -x-1)*4 +1) = xyz[1]*normalizer;
+                *(image_RGBA + y*(*x_size)*4 + (*x_size -x-1)*4 +2) = xyz[2]*normalizer;
             }
         }
     }//TODO: implement ascii

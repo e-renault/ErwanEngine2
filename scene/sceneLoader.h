@@ -33,13 +33,14 @@ int loadSceneFromFile(
         return 0;
     }
 
-    //TODO potential error
+    //TODO potential error, the whole file should be rewrited
     Point3 points[1000];
-    rgb color[400];
-    color[0]=(rgb){1,1,1};
+    EE_FLOAT2 texture_buffer[400] = {(0,0)};
+    EE_FLOAT3 normal_buffer[400];
     char object[50][10] = {"missingno"};
 
-    int color_index = 1;
+    int texture_index = 1;
+    int normal_index = 1;
     int point_index = 0;
     int object_index = 0;
     int triangle_index = 0;
@@ -56,22 +57,19 @@ int loadSceneFromFile(
         } else if (!strcmp(identifier, "v")) {
             EE_FLOAT x, y, z;
             sscanf(rest, " %f %f %f", &x, &y, &z);
-            points[point_index] = (Point3) {x, y, z};
-            point_index++;
+            points[point_index++] = (Point3) {x, y, z};
             
             //printPoint3(points[point_index-1]);printf("\n");
         } else if (!strcmp(identifier, "vt")) {
             EE_FLOAT c1, c2;
             sscanf(rest, " %f %f", &c1, &c2);
-            color[color_index] = (rgb) {c1, c2, 1-(c1+c2)};
-            color_index++;
+            texture_buffer[texture_index++] = (EE_FLOAT2) {c1, c2};
             
             //printf("(%f, %f, %f)\n", color[color_index-1].r, color[color_index-1].r, color[color_index-1].r);
-        } else if (!strcmp(identifier, "vc")) {
-            EE_FLOAT r, g, b;
-            sscanf(rest, " %f %f %f", &r, &g, &b);
-            color[color_index] = (rgb) {r, g, b};
-            color_index++;
+        } else if (!strcmp(identifier, "vn")) {
+            EE_FLOAT x, y, z;
+            sscanf(rest, " %f %f %f", &x, &y, &z);
+            normal_buffer[normal_index++] = (EE_FLOAT3) {x, y, z};
             
             //printPoint3(points[point_index-1]);printf("\n");
         } else if (!strcmp(identifier, "f")) {
@@ -87,20 +85,27 @@ int loadSceneFromFile(
             if (!ret) ret = 3==sscanf(rest, " %d %d %d", &v1, &v2, &v3);
             if (!ret) printf("Error while parsing triangle [%i]\n",ret);
 
-            textures[triangle_index] = (Texture) {.x_res = 1, .y_res = 1, .color1=color[vt1], .color2=color[vt2], .color3=color[vt3]};
+            EE_FLOAT2 vtx = {texture_buffer[vt2].x-texture_buffer[vt1].x, texture_buffer[vt2].y-texture_buffer[vt1].y};
+            EE_FLOAT2 vty = {texture_buffer[vt3].x-texture_buffer[vt1].x, texture_buffer[vt3].y-texture_buffer[vt1].y};
+        
+            textures[triangle_index] = (Texture) {
+                .v1=vtx,
+                .v2=vty,
+                .voff=texture_buffer[vt1]};
             triangles[triangle_index] = newTriangle3(points[v1-1], points[v2-1], points[v3-1]);
             triangle_index++;
             
             //printf("[%i](%i, %i, %i)\n",ret, v1, v2, v3);
             //printTriangle3(triangles[triangle_index]);
+            //printf("vtx{%f,%f}, vty{%f,%f}, voff{%f,%f}\n", vtx.x, vtx.y, vty.x, vty.y, texture_buffer[vt1].x, texture_buffer[vt1].y);
         } else {
-            //printf("[unidentified] {%s}\n", rest);
+            //printf("[unidentified] {%s}\n", rest);//TODO: C'est vraiment de la merde ce truc
         }
         
     }
     *nb_triangle = triangle_index;
 
-    printf("loaded : %s -> triangles : %i, points : %i, color : %i\n", object[0], triangle_index, point_index, color_index);
+    printf("loaded : %s -> triangles : %i, points : %i, color : %i\n", object[0], triangle_index, point_index, texture_index);
 
     fclose(fptr);
     if (line)
