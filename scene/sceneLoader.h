@@ -35,8 +35,8 @@ int loadSceneFromFile(
     }
     
     Point3 points[1000];
-    EE_FLOAT2 texture_buffer[400] = {(0,0)};
-    EE_FLOAT3 normal_buffer[400];
+    EE_FLOAT2 texture_buffer[1000] = {(0,0)};
+    EE_FLOAT3 normal_buffer[3000] = {(0,0,0)};
     char object[50][10] = {"missingno"};
 
     int texture_index = 1;
@@ -138,7 +138,6 @@ int loadSceneFromFile(
         .color2={1.3,   1.3,   1.3},//sky lum base_ref
         .color3={0,     0,     1}
     };
-
     return *nb_triangle;
 }
 
@@ -230,6 +229,32 @@ int loadCubeScene(
     };
     
     return *nb_triangle;
+}
+
+//TODO: To be deleted (c'était drole mais bon à un moment faut stop)
+int loadMaxwellScene(
+        char* path,
+        Point3* cam_coordinate,
+        Vector3* cam_lookat
+    ) {
+
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    float _sec = ((float) time.tv_usec/1000000) + time.tv_sec % 100;
+    float _secmod = _sec / 8;
+    float _trunksecmod = _secmod - truncf(_secmod);
+    float _rad = _trunksecmod * 2 * 3.14;
+    float alphaz = sin(_rad) * 0.2f + 0.5f;
+    float sin_alpha = sin(_rad) * 0.7f;
+    float cos_alpha = cos(_rad) * 0.7f;
+    float k = 2;
+
+
+    //*nb_lights = 1;
+    *cam_coordinate = (Point3) {sin_alpha*10, 3, cos_alpha*10};
+    *cam_lookat = getNorm((Vector3) {-cam_coordinate->x, -cam_coordinate->y, -cam_coordinate->z});
+    
+    return 0;
 }
 
 #endif //SCENE_LOADER_H_

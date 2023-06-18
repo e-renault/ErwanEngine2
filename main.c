@@ -31,7 +31,7 @@ static const char* ERROR_MSG = "(Error)";
 static int Y_RES = 600;
 static int X_RES = 800;
 static int RES = 480000;//Y_RES*X_RES
-static int MAX_NB_TRIANGLE = 650;
+static int MAX_NB_TRIANGLE = 1000;
 static int MAX_NB_LIGHTSOURCE = 10;
 static float FOV = 70.0;
 static char scene_path[] = "src/obj/";
@@ -365,15 +365,13 @@ int main(int argc, char *argv[]) {
         struct timeval stop, start;
         gettimeofday(&start, NULL);
         if (cube_demo) {
-            status = loadCubeScene(
-                path, 
-                &real_nb_triangles, triangles, 
-                textures, 
-                &real_nb_lights, lights,
-                &cam_coordinate, &cam_lookat,
-                &sky_light_dir, &sky_light_texture
+
+            status = loadMaxwellScene(
+                path,
+                &cam_coordinate,
+                &cam_lookat
             );
-            scene_changed = 1;
+            cam_moved = 1;
         }
 
         if (scene_changed) {
