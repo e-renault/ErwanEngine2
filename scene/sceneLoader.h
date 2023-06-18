@@ -8,6 +8,7 @@
 #include "../math/lib3D.h"
 #include "../math/lib3D_debug.h"
 
+//TODO potential error, the whole file should be rewrited
 int loadSceneFromFile(
         char* path,
         int* nb_triangle,
@@ -32,8 +33,7 @@ int loadSceneFromFile(
         printf(" ##### /!\\ File not found ! ##### \n");
         return 0;
     }
-
-    //TODO potential error, the whole file should be rewrited
+    
     Point3 points[1000];
     EE_FLOAT2 texture_buffer[400] = {(0,0)};
     EE_FLOAT3 normal_buffer[400];
@@ -85,19 +85,18 @@ int loadSceneFromFile(
             if (!ret) ret = 3==sscanf(rest, " %d %d %d", &v1, &v2, &v3);
             if (!ret) printf("Error while parsing triangle [%i]\n",ret);
 
-            EE_FLOAT2 vtx = {texture_buffer[vt2].x-texture_buffer[vt1].x, texture_buffer[vt2].y-texture_buffer[vt1].y};
-            EE_FLOAT2 vty = {texture_buffer[vt3].x-texture_buffer[vt1].x, texture_buffer[vt3].y-texture_buffer[vt1].y};
+            EE_FLOAT2 voff = texture_buffer[vt2];
+            EE_FLOAT2 vty = {texture_buffer[vt1].x-voff.x, texture_buffer[vt1].y-voff.y};
+            EE_FLOAT2 vtx = {texture_buffer[vt3].x-voff.x, texture_buffer[vt3].y-voff.y};
+            
         
-            textures[triangle_index] = (Texture) {
-                .v1=vtx,
-                .v2=vty,
-                .voff=texture_buffer[vt1]};
-            triangles[triangle_index] = newTriangle3(points[v1-1], points[v2-1], points[v3-1]);
-            triangle_index++;
+            textures[triangle_index] = (Texture) {.v1=vtx,.v2=vty,.voff=voff};
+            triangles[triangle_index++] = newTriangle3(points[v2-1], points[v3-1], points[v1-1]);
+            
             
             //printf("[%i](%i, %i, %i)\n",ret, v1, v2, v3);
             //printTriangle3(triangles[triangle_index]);
-            //printf("vtx{%f,%f}, vty{%f,%f}, voff{%f,%f}\n", vtx.x, vtx.y, vty.x, vty.y, texture_buffer[vt1].x, texture_buffer[vt1].y);
+            //printf("vtx{%f,%f}, vty{%f,%f}, voff{%f,%f}\n", vtx.x, vtx.y, vty.x, vty.y, voff.x, voff.y);
         } else {
             //printf("[unidentified] {%s}\n", rest);//TODO: C'est vraiment de la merde ce truc
         }
@@ -143,6 +142,7 @@ int loadSceneFromFile(
     return *nb_triangle;
 }
 
+//TODO: To be deleted (c'était drole mais bon à un moment faut stop)
 int loadCubeScene(
         char* path,  
         int* nb_triangle,
@@ -201,46 +201,12 @@ int loadCubeScene(
 
     *nb_triangle = i;
 
-    rgb random_colors[40] = {
-        {0.036422119577474, 0.704109688303234, 0.45896783111661},
-        {0.956269448285397, 0.0225273324605426, 0.92021036821545},
-        {0.420983478522237, 0.941959452024163, 0.872646938139664},        
-        {0.511912583274566, 0.873792707860716, 0.289653062852194},        
-        {0.073244978282671, 0.409036657662119, 	0.57471693354335},
-        {0.952614859803359, 0.696963677206315, 0.808357751569233},        
-        {0.587739078058138, 0.388074065093731, 0.996909808547681},        
-        {0.840783554242627, 0.840773691455328, 0.326636740994671},        
-        {0.433044182104898, 0.865486673796387, 0.103800389361594},        
-        {0.030073544872235, 0.008653624617048, 0.746564945594},
-        {0.374376202921323, 0.242621578765991, 0.433938037871508},        
-        {0.388967932380261, 0.919815685550748, 0.317127439679906},        
-        {0.491511090163302, 0.627888033110743, 0.062552685579218},
-        {0.896303796783786, 0.538532580810791, 0.563982140030735},        
-        {0.582902661225595, 0.880817534389428, 0.745208654421003},        
-        {0.156943572641026, 0.66437873703904, 0.610699686272349},
-        {0.954385160276854, 0.445921688189521, 0.98975014618411},
-        {0.082011468003816, 0.432656475032383, 	0.12380354853685},
-        {0.675419855566087, 0.0494199145340208, 0.97066110137608},
-        {0.672434702344021, 0.650425553397091, 0.482039137232547},        
-        {0.209522442995634, 0.108872134366092, 0.873686250541582},        
-        {0.091376754007102, 0.432874560106377, 0.46060482538636},
-        {0.099706675595527, 0.959420719265034, 0.71281571676143},
-        {0.934684749466345, 0.457964781814187, 0.277319652088188},        
-        {0.289744386533678, 0.475310519058473, 0.160283028867265},        
-        {0.61041733010124, 0.913035540638055, .882560694948989}, 
-        {0.287841735186862, 0.0561812115307762, 0.28637401127652},
-        {0.008838310763848, 0.91535707848396, 0.8164292832216},
-        {0.116346871414582, 0.877979777046005, 0.014705205378353},        
-        {0.277411672120203, 0.953316637720127, 0.705492149611232},        
-        {0.705210590334554, 0.951415598863655, 0.337004898660462},        
-        {0.069476201324669, 0.841603411752756, 0.00136731772498},
-        {0.917187801632521, 0.0262881029625109, 0.19007638867168},
-        };
+    EE_FLOAT2 voff = {0, 0};
+    EE_FLOAT2 vty = {0.5, 0};
+    EE_FLOAT2 vtx = {0, 0.5};
     for (;i--;) {
         textures[i] = (Texture) {
-            .color1=random_colors[i %32], 
-            .color2=random_colors[i %32], 
-            .color3=random_colors[i %32]
+            .v1=vtx,.v2=vty,.voff=voff
         };
     }
     *nb_lights = 0;

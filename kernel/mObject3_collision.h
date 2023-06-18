@@ -79,10 +79,12 @@ int getCollisionRayTriangle(Triangle3 t, Ray3 r, EE_FLOAT max_dist, Point3* glob
     EE_FLOAT angle = getAngle(t.pl.n, r.v);
     *normal = (angle>0.5) ? t.pl.n: -(t.pl.n);
     
-    int ret = 0 < local_point->x;
-    ret &= 0 < local_point->y;
-    ret &= local_point->x + local_point->y <= 1;
+    int ret = 0 <= local_point->x;
+    ret &= 0 <= local_point->y;
     ret &= *dist > 0.0001;//prevent auto-detect collision
+    ret &= local_point->x + local_point->y <= 1;
+    //ret &= 1 >= local_point->y;
+    //ret &= 1 >= local_point->x;
 
     return ret;
 }

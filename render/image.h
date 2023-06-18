@@ -83,7 +83,6 @@ unsigned char* load_file(char* location, int* x_size, int* y_size) {
         }
     }//TODO: implement ascii
     
-
     fclose(ppmfile);
 
     return image_RGBA;

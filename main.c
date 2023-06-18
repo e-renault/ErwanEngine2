@@ -28,16 +28,17 @@ static const char* ERROR_MSG = "(Error)";
 
 /* Global vars */
 // frame definition (default)
-static int MAX_NB_TRIANGLE = 650;
 static int Y_RES = 600;
-static int MAX_NB_LIGHTSOURCE = 10;
 static int X_RES = 800;
+static int RES = 480000;//Y_RES*X_RES
+static int MAX_NB_TRIANGLE = 650;
+static int MAX_NB_LIGHTSOURCE = 10;
 static float FOV = 70.0;
-static int RES = 480000;
 static char scene_path[] = "src/obj/";
+static char texture_path[] = "src/texture/";
 static char obj_file_name[] = "default.obj";
-static char texture_map_path[] = "src/texture/crate.ppm";
-static char normal_map_path[] = "src/texture/gimp_raw.ppm";
+static char texture_map_path[] = "minecraft.ppm";
+static char normal_map_path[] = "gimp_raw.ppm";
 static int SHOW_FPS = 0;
 static int DEBUG_GLOBAL_INFO = 0;
 static int DEBUG_KERNEL_INFO = 0;
@@ -91,19 +92,18 @@ void display_callback(){
 
 void keyboard(unsigned char key, int xmouse, int ymouse);
 void keyboard(unsigned char key, int xmouse, int ymouse) {
-    Vector3 UP = {0,1,0};
     Vector3 rightVector = crossProduct(cam_lookat, UP);
     switch (key) {
         case 'z':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(0.1, cam_lookat));cam_moved = 1;break;
         case 's':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(-0.1f, cam_lookat));cam_moved = 1;break;
-        case 'q':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(0.1, rightVector));cam_moved = 1;break;
-        case 'd':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(-0.1f, rightVector));cam_moved = 1;break;
+        case 'q':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(-0.1, rightVector));cam_moved = 1;break;
+        case 'd':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(0.1f, rightVector));cam_moved = 1;break;
         case ' ':cam_coordinate.y += 0.1;cam_moved = 1;break;
         case 'e':cam_coordinate.y -= 0.1;cam_moved = 1;break;
-        case 'm':cam_lookat = rotateAround(cam_lookat, UP, 0.1f);cam_moved = 1;break;
-        case 'k':cam_lookat = rotateAround(cam_lookat, UP, -0.1f);cam_moved = 1;break;
+        case 'm':cam_lookat = rotateAround(cam_lookat, UP, -0.1f);cam_moved = 1;break;
+        case 'k':cam_lookat = rotateAround(cam_lookat, UP, 0.1f);cam_moved = 1;break;
         case 'o': if (getAngle(cam_lookat, UP) > 0.2f) cam_lookat = rotateAround(cam_lookat, rightVector, 0.1f);cam_moved = 1;break;
-        case 'l': if (getAngle(cam_lookat, UP) > 0.2f) cam_lookat = rotateAround(cam_lookat, rightVector, -0.1f);cam_moved = 1;break;
+        case 'l': if (getAngle(cam_lookat, DOWN) > 0.2f) cam_lookat = rotateAround(cam_lookat, rightVector, -0.1f);cam_moved = 1;break;
         case 't':sky_light_dir.x +=0.1;scene_changed = 1;break;
         case 'g':sky_light_dir.x -=0.1;scene_changed = 1;break;
         case 'y':sky_light_dir.y +=0.1;scene_changed = 1;break;
@@ -158,7 +158,8 @@ void extract_params(int argc, char *argv[]) {
         int this_option_optind = optind ? optind : 1;
         int option_index = 0;
         static struct option long_options[] = {
-            {"max_triangle",    required_argument, 0,  't' },
+            {"max_triangle",    required_argument, 0,  'r' },
+            {"texture",         required_argument, 0,  't' },
             {"max_lightsource", required_argument, 0,  'l' },
             {"XRES",            required_argument, 0,  'x' },
             {"YRES",            required_argument, 0,  'y' },
@@ -184,6 +185,10 @@ void extract_params(int argc, char *argv[]) {
                 break;
 
             case 't':
+                strcpy(texture_map_path, optarg);
+                printf("texture_map_path set to '%s'\n", texture_map_path);
+                break;
+            case 'r':
                 MAX_NB_TRIANGLE = atoi(optarg);
                 printf("MAX_NB_TRIANGLE set to '%i'\n", MAX_NB_TRIANGLE);
                 break;
@@ -259,12 +264,14 @@ int main(int argc, char *argv[]) {
         &sky_light_dir,&sky_light_texture
     );
 
+    char path2[1000] = "\0";strcat(path2, texture_path);strcat(path2, texture_map_path);
     int texture_map_res_x, texture_map_res_y;
-    texture_map = load_file(texture_map_path, &texture_map_res_x, &texture_map_res_y);
+    texture_map = load_file(path2, &texture_map_res_x, &texture_map_res_y);
     //save_to_file(texture_map, "test.ppm", texture_map_res_x, texture_map_res_y);
 
+    char path3[1000] = "\0";strcat(path3, texture_path);strcat(path3, normal_map_path);
     int normal_map_res_x, normal_map_res_y;
-    normal_map = load_file(normal_map_path, &normal_map_res_x, &normal_map_res_y);
+    normal_map = load_file(path3, &normal_map_res_x, &normal_map_res_y);
 
 
     // start glut thread

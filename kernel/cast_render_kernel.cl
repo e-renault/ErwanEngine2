@@ -23,7 +23,6 @@ __kernel void simpleCast (
         Vector3 cam_dir,
 
 
-
         __read_only image2d_t texture_map,
         __read_only image2d_t normal_map
 
@@ -63,10 +62,11 @@ __kernel void simpleCast (
 
     /*********** Init cam ***********/
     Vector3 vd_ray = cam_dir;
-    vd_ray = rotateAround(vd_ray, UP, theta_x);
-    
-    Vector3 right = crossProduct(vd_ray, UP);
+    Vector3 right = crossProduct(cam_dir, UP);
     vd_ray = rotateAround(vd_ray, right, theta_y);
+    
+    Vector3 new_up = crossProduct(vd_ray, right);
+    vd_ray = rotateAround(vd_ray, new_up, theta_x);
 
     Ray3 ray = (Ray3){.p=cam_point, .v=vd_ray};
     
