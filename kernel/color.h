@@ -3,6 +3,7 @@
 
 #include "../kernel/header.h"
 
+//TODO: to be deleted ?
 rgb cap(rgb color);
 rgb cap(rgb color) {
     return (rgb) {

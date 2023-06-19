@@ -8,18 +8,17 @@
 #include "../math/lib3D.h"
 #include "../math/lib3D_debug.h"
 
-//TODO potential error, the whole file should be rewrited
 int loadSceneFromFile(
         char* path,
-        int* nb_triangle,
-        Triangle3* triangles,
-        Texture* textures,
-        int* nb_lights,
-        LightSource3* lights,
+        int* triangle_index,
+        Triangle3** triangles,
+        Texture** textures,
+        int* nb_lights,//TODO: should be deleted
+        LightSource3* lights,//TODO: should be deleted
         Point3* cam_coordinate,
         Vector3* cam_lookat,
-        Vector3* sky_light_dir,
-        Texture* sky_light_texture
+        Vector3* sky_light_dir,//TODO: should be refactored
+        Texture* sky_light_texture//TODO: should be refactored
     ) {
 
     FILE *fptr;
@@ -33,83 +32,120 @@ int loadSceneFromFile(
         printf(" ##### /!\\ File not found ! ##### \n");
         return 0;
     }
-    
-    Point3 points[1000];
-    EE_FLOAT2 texture_buffer[1000] = {(0,0)};
-    EE_FLOAT3 normal_buffer[3000] = {(0,0,0)};
-    char object[50][10] = {"missingno"};
 
-    int texture_index = 1;
-    int normal_index = 1;
-    int point_index = 0;
-    int object_index = 0;
-    int triangle_index = 0;
-    int _;
-    *nb_lights = 0;
-    *nb_triangle = 0;
+    Point3* point_buffer;
+    EE_FLOAT2* texture_buffer;
+    EE_FLOAT3* normal_buffer;
+
+    int nb_triangle_size = 512;
+    int nb_texture_size = 512;
+    int point_buffer_size = 512;
+    int texture_buffer_size = 512;
+    int normal_buffer_size = 512;
     
+    *triangles      = (Triangle3*)  malloc(nb_triangle_size     * sizeof(Triangle3));
+    *textures       = (Texture*)    malloc(nb_texture_size      * sizeof(Texture));
+    point_buffer    = (Point3*)     malloc(point_buffer_size    * sizeof(Point3));
+    texture_buffer  = (EE_FLOAT2*)  malloc(texture_buffer_size  * sizeof(EE_FLOAT2));
+    normal_buffer   = (EE_FLOAT3*)  malloc(normal_buffer_size   * sizeof(EE_FLOAT3));
+
+    texture_buffer[0] = (EE_FLOAT2) {(0,0)};//set index 0 for undefined and array shift
+    normal_buffer[0] = (EE_FLOAT3) {(0,0,0)};//set index 0 for undefined and array shift
+
+
+    *triangle_index = 0;
+    int texture_index = 0;
+    int point_index = 0;
+    int texture_coo_index = 1;
+    int normal_index = 1;
+
     while ((len2 = getline(&line, &len1, fptr)) != -1) {
-        identifier = strtok_r(line, " ", &rest);
-        
-        if (!strcmp(identifier, "o")) {
-            sscanf(rest, " %s", object[object_index]);
-            object_index++;
-        } else if (!strcmp(identifier, "v")) {
-            EE_FLOAT x, y, z;
-            sscanf(rest, " %f %f %f", &x, &y, &z);
-            points[point_index++] = (Point3) {x, y, z};
-            
-            //printPoint3(points[point_index-1]);printf("\n");
-        } else if (!strcmp(identifier, "vt")) {
-            EE_FLOAT c1, c2;
-            sscanf(rest, " %f %f", &c1, &c2);
-            texture_buffer[texture_index++] = (EE_FLOAT2) {c1, c2};
-            
-            //printf("(%f, %f, %f)\n", color[color_index-1].r, color[color_index-1].r, color[color_index-1].r);
-        } else if (!strcmp(identifier, "vn")) {
-            EE_FLOAT x, y, z;
-            sscanf(rest, " %f %f %f", &x, &y, &z);
-            normal_buffer[normal_index++] = (EE_FLOAT3) {x, y, z};
-            
-            //printPoint3(points[point_index-1]);printf("\n");
-        } else if (!strcmp(identifier, "f")) {
-            int v1, v2, v3;
-            int vt1=0, vt2=0, vt3=0;
-            int vn1, vn2, vn3;
+        EE_FLOAT x, y, z, c1, c2;
+        switch (line[0]) {
+        case 'v':
+            switch (line[1]) {
+                case ' ':
+                    sscanf(line, "v %f %f %f", &x, &y, &z);
+                    point_buffer[point_index++] = (Point3) {x, y, z};
+                    break;
+                case 't':
+                    sscanf(line, "vt %f %f", &c1, &c2);
+                    texture_buffer[texture_coo_index++] = (EE_FLOAT2) {c1, c2};
+                    break;
+                case 'n':
+                    sscanf(line, "vn %f %f %f", &x, &y, &z);
+                    normal_buffer[normal_index++] = (EE_FLOAT3) {x, y, z};
+                    break;
+                default:break;
+            }
+            break;
+        case 'f':
+            EE_INT v1, v2, v3;
+            EE_INT vt1=0, vt2=0, vt3=0;
+            EE_INT vn1=0, vn2=0, vn3=0;
 
             int ret=0;
-            if (!ret) ret = 9==sscanf(rest, " %d/%d/%d %d/%d/%d %d/%d/%d", &v1, &vt1, &vn1, &v2, &vt2, &vn2, &v3, &vt3, &vn3);
-            if (!ret) ret = 6==sscanf(rest, " %d//%d %d//%d %d//%d", &v1, &vn1, &v2, &vn2, &v3, &vn3);
-            if (!ret) ret = 6==sscanf(rest, " %d/%d/ %d/%d/ %d/%d/", &v1, &vt1, &v2, &vt2, &v3, &vt3);
-            if (!ret) ret = 3==sscanf(rest, " %d// %d// %d//", &v1, &v2, &v3);
-            if (!ret) ret = 3==sscanf(rest, " %d %d %d", &v1, &v2, &v3);
-            if (!ret) printf("Error while parsing triangle [%i]\n",ret);
+            if (!ret) ret = 9==sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d", &v1, &vt1, &vn1, &v2, &vt2, &vn2, &v3, &vt3, &vn3);
+            if (!ret) ret = 6==sscanf(line, "f %d//%d %d//%d %d//%d", &v1, &vn1, &v2, &vn2, &v3, &vn3);
+            if (!ret) ret = 6==sscanf(line, "f %d/%d/ %d/%d/ %d/%d/", &v1, &vt1, &v2, &vt2, &v3, &vt3);
+            if (!ret) ret = 3==sscanf(line, "f %d// %d// %d//", &v1, &v2, &v3);
+            if (!ret) ret = 3==sscanf(line, "f %d %d %d", &v1, &v2, &v3);
+            if (!ret) printf("Error while parsing triangle [%s]\n",line);
 
             EE_FLOAT2 voff = texture_buffer[vt2];
             EE_FLOAT2 vty = {texture_buffer[vt1].x-voff.x, texture_buffer[vt1].y-voff.y};
             EE_FLOAT2 vtx = {texture_buffer[vt3].x-voff.x, texture_buffer[vt3].y-voff.y};
-            
         
-            textures[triangle_index] = (Texture) {.v1=vtx,.v2=vty,.voff=voff};
-            triangles[triangle_index++] = newTriangle3(points[v2-1], points[v3-1], points[v1-1]);
-            
-            
-            //printf("[%i](%i, %i, %i)\n",ret, v1, v2, v3);
-            //printTriangle3(triangles[triangle_index]);
-            //printf("vtx{%f,%f}, vty{%f,%f}, voff{%f,%f}\n", vtx.x, vtx.y, vty.x, vty.y, voff.x, voff.y);
-        } else {
-            //printf("[unidentified] {%s}\n", rest);//TODO: C'est vraiment de la merde ce truc
+            (*textures)[texture_index++] = (Texture) {.v1=vtx,.v2=vty,.voff=voff};
+            (*triangles)[(*triangle_index)++] = newTriangle3(point_buffer[v2-1], point_buffer[v3-1], point_buffer[v1-1]);
+            break;
+        default:
+            break;
+        }
+
+        if (*triangle_index >= nb_triangle_size) {
+            nb_triangle_size*=2;
+            *triangles = (Triangle3*) realloc(*triangles, nb_triangle_size * sizeof(Triangle3));
+            printf("#info: increase triangle buffer by *2 (%i)\n", nb_triangle_size);
         }
         
-    }
-    *nb_triangle = triangle_index;
+        if (texture_index >= nb_texture_size) {
+            nb_texture_size*=2;
+            *textures = (Texture*) realloc(*textures, nb_texture_size * sizeof(Texture));
+            printf("#info: increase texture buffer by *2 (%i)\n", nb_texture_size);
+        }
 
-    printf("loaded : %s -> triangles : %i, points : %i, color : %i\n", object[0], triangle_index, point_index, texture_index);
+        if (point_index >= point_buffer_size) {
+            point_buffer_size*=2;
+            point_buffer = (Point3*) realloc(point_buffer, point_buffer_size * sizeof(Point3));
+            printf("#info: increase point buffer by *2 (%i)\n", point_buffer_size);
+        }
+
+        if (texture_coo_index >= texture_buffer_size) {
+            texture_buffer_size*=2;
+            texture_buffer = (EE_FLOAT2*) realloc(texture_buffer, texture_buffer_size * sizeof(EE_FLOAT2));
+            printf("#info: increase texture coo buffer by *2 (%i)\n", texture_buffer_size);
+        }
+
+        if (normal_index >= normal_buffer_size) {
+            normal_buffer_size*=2;
+            normal_buffer = (EE_FLOAT3*) realloc(normal_buffer, normal_buffer_size * sizeof(EE_FLOAT3));
+            printf("#info: increase normale buffer by *2 (%i)\n", normal_buffer_size);
+        }
+    }
+
+    printf("loaded : %s -> triangles : %i, points : %i, color : %i\n", path, *triangle_index, point_index, texture_coo_index);
 
     fclose(fptr);
     if (line)
         free(line);
 
+
+    //TODO: to refactor
+    *cam_coordinate = (Point3) {0.5, 0.5, 2.0};
+    *cam_lookat = (Vector3) {0, 0, -1};
+
+    *nb_lights = 0;
     lights[(*nb_lights)++] = (LightSource3) {
         .color = (rgb) {0,0,1},
         .dir = (Vector3) {0,0,0},
@@ -129,16 +165,13 @@ int loadSceneFromFile(
         .intensity = 12
     };
     
-    //*nb_lights = 1;
-    *cam_coordinate = (Point3) {0.5, 0.5, 2.0};
-    *cam_lookat = (Vector3) {0, 0, -1};
     *sky_light_dir = (Vector3) {-0.7, -1, -0.5};
     *sky_light_texture = (Texture) {
         .color1={0.58,  0.78,  0.92},
         .color2={1.3,   1.3,   1.3},//sky lum base_ref
         .color3={0,     0,     1}
     };
-    return *nb_triangle;
+    return 1;
 }
 
 //TODO: To be deleted (c'était drole mais bon à un moment faut stop)

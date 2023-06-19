@@ -8,8 +8,6 @@ Here is my second version of the ErwanEngine, implemented in C using opencl to i
 
 The program can lead to a high CPU and GPU T° since it has not be designed to take care of hardware capabilities.
 
-Do not import obj file that have more than 600 triangles or 1000 points. 
-
 Currently, lights are experimental and cannot be changed (hard coded stuffs).
 
 
@@ -41,7 +39,8 @@ optional:
 
 optional:
 ```
---file  [OBJ_FILE_TO_LOAD]              (default:"default.obj")  <- you should use one of the Availables scenes (see section "Available scenes").
+--obj  [OBJ_FILE_TO_LOAD]               (default:"default.obj")  <- you should use one of the Availables scenes (see section "Available scenes").
+--texture [PPM_FILE_TO_LOAD]            (default:"minecraft.ppm")<- image file should be converted to raw ppm file (P6)
 --FOV   [FIELD_OF_VIEW_IN_DEGREE]       (default:70)
 --XRES  [HORISONTAL_RESOLUTION_IN_PX]   (default:800)
 --YRES  [VERTICAL_RESOLUTION_IN_PX]     (default:600)
@@ -50,8 +49,6 @@ optional:
 debug (experimental):
 ```
 --path  [SCENE_PATH]                    (default:"scene/data/")
---max_triangle [NB_TRIANGLES_MAX]       (default:650)
---max_lightsource [NB_LIGHT_MAX]        (default:10)
 --FPS
 --GINFO
 --KINFO
@@ -59,17 +56,12 @@ debug (experimental):
 ```
 
 ## Available scenes
-This is what files you can use using "--file=" argument.
+This is what files you can use using "--obj=" argument. You should also provide the "--texture=" texture
 
- * cheval.obj
- * cube.obj
+ * crate.obj
  * default.obj
- * fox.obj
- * horse2.obj
  * maxwell.obj
- * ~~nature.obj~~ (Please don't)
- * pyramid.obj
- * tenet.obj
+ * minecraft.obj
 
 ## Controls
 ### Camera
@@ -79,7 +71,7 @@ This is what files you can use using "--file=" argument.
     `oklm`    -> rotate camera
 
 ### Misk (experimental)
-    `r`    -> go to bouncing box mode
+    `r`    -> super secret mode
     `t/g`  -> increase/decrease sun x vector property 
     `y/h`  -> increase/decrease sun y vector property
     `u/j`  -> increase/decrease sun z vector property

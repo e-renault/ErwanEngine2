@@ -31,8 +31,6 @@ static const char* ERROR_MSG = "(Error)";
 static int Y_RES = 600;
 static int X_RES = 800;
 static int RES = 480000;//Y_RES*X_RES
-static int MAX_NB_TRIANGLE = 1000;
-static int MAX_NB_LIGHTSOURCE = 10;
 static float FOV = 70.0;
 static char scene_path[] = "src/obj/";
 static char texture_path[] = "src/texture/";
@@ -54,8 +52,6 @@ static int DEBUG_HARDWARE_INFO = 0;
 
 // scene description
 static unsigned char* output_render_buffer;
-static unsigned char* texture_map;
-static unsigned char* normal_map;
 static Point3 cam_coordinate;
 static Vector3 cam_lookat;
 static Vector3 sky_light_dir;//direction of the sun light
@@ -158,19 +154,16 @@ void extract_params(int argc, char *argv[]) {
         int this_option_optind = optind ? optind : 1;
         int option_index = 0;
         static struct option long_options[] = {
-            {"max_triangle",    required_argument, 0,  'r' },
-            {"texture",         required_argument, 0,  't' },
-            {"max_lightsource", required_argument, 0,  'l' },
-            {"XRES",            required_argument, 0,  'x' },
-            {"YRES",            required_argument, 0,  'y' },
-            {"FOV",             required_argument, 0,  'f' },
-            {"file",            required_argument, 0,  'o' },
-            {"path",            required_argument, 0,  'p' },
-            {"FPS",             no_argument,       &SHOW_FPS,  1 },
-            {"GINFO",           no_argument,       &DEBUG_GLOBAL_INFO,  1 },
-            {"KINFO",           no_argument,       &DEBUG_KERNEL_INFO,  1 },
-            {"HINFO",           no_argument,       &DEBUG_HARDWARE_INFO,  1 },
-            {0,                 0,                 0,  0 }
+            {"XRES",    required_argument, 0,  'x' },
+            {"YRES",    required_argument, 0,  'y' },
+            {"FOV",     required_argument, 0,  'f' },
+            {"obj",     required_argument, 0,  'o' },
+            {"texture", required_argument, 0,  't' },
+            {"FPS",     no_argument,       &SHOW_FPS,  1 },
+            {"GINFO",   no_argument,       &DEBUG_GLOBAL_INFO,  1 },
+            {"KINFO",   no_argument,       &DEBUG_KERNEL_INFO,  1 },
+            {"HINFO",   no_argument,       &DEBUG_HARDWARE_INFO,  1 },
+            {0,         0,                 0,  0 }
 
         };
         c = getopt_long(argc, argv, "abc:d:012", long_options, &option_index);
@@ -188,14 +181,6 @@ void extract_params(int argc, char *argv[]) {
                 strcpy(texture_map_path, optarg);
                 printf("texture_map_path set to '%s'\n", texture_map_path);
                 break;
-            case 'r':
-                MAX_NB_TRIANGLE = atoi(optarg);
-                printf("MAX_NB_TRIANGLE set to '%i'\n", MAX_NB_TRIANGLE);
-                break;
-            case 'l':
-                MAX_NB_LIGHTSOURCE = atoi(optarg);
-                printf("MAX_NB_LIGHTSOURCE set to '%i'\n", MAX_NB_LIGHTSOURCE);
-                break;
             case 'x':
                 X_RES = atoi(optarg);
                 printf("X_RES set to '%i'\n", X_RES);
@@ -211,10 +196,6 @@ void extract_params(int argc, char *argv[]) {
             case 'o':
                 strcpy(obj_file_name, optarg);
                 printf("obj_file_name set to '%s'\n", obj_file_name);
-                break;
-            case 'p':
-                strcpy(scene_path, optarg);
-                printf("scene_path set to '%s'\n", scene_path);
                 break;
 
             case '?':
@@ -246,19 +227,19 @@ int main(int argc, char *argv[]) {
     // load scene components
     output_render_buffer = (unsigned char*) calloc(RES, sizeof(char) * 4);
     
-    cl_int real_nb_triangles = 0;
-    Triangle3* triangles = (Triangle3*) calloc(MAX_NB_TRIANGLE, sizeof(Triangle3));
-    Texture* textures = (Texture*) calloc(MAX_NB_TRIANGLE, sizeof(Texture));
+    cl_int nb_triangles = 0;
+    Triangle3* triangles;
+    Texture* textures;
 
     cl_int real_nb_lights = 0;
-    LightSource3* lights = (LightSource3*) calloc(MAX_NB_LIGHTSOURCE, sizeof(LightSource3));
+    LightSource3* lights = (LightSource3*) calloc(10, sizeof(LightSource3));//TODO: should be removed
 
-    char path[500] = "\0";strcat(path, scene_path);strcat(path, obj_file_name);
-    if (DEBUG_GLOBAL_INFO) printf("Loading : %s\n", path);
+    char obj_path[1000] = "\0";strcat(obj_path, scene_path);strcat(obj_path, obj_file_name);
+    if (DEBUG_GLOBAL_INFO) printf("Loading : %s\n", obj_path);
     status = loadSceneFromFile(
-        path, 
-        &real_nb_triangles, triangles, 
-        textures, 
+        obj_path,
+        &nb_triangles, &triangles,
+        &textures,
         &real_nb_lights, lights,
         &cam_coordinate,&cam_lookat,
         &sky_light_dir,&sky_light_texture
@@ -266,12 +247,11 @@ int main(int argc, char *argv[]) {
 
     char path2[1000] = "\0";strcat(path2, texture_path);strcat(path2, texture_map_path);
     int texture_map_res_x, texture_map_res_y;
-    texture_map = load_file(path2, &texture_map_res_x, &texture_map_res_y);
-    //save_to_file(texture_map, "test.ppm", texture_map_res_x, texture_map_res_y);
+    unsigned char* texture_map = load_file(path2, &texture_map_res_x, &texture_map_res_y);
 
     char path3[1000] = "\0";strcat(path3, texture_path);strcat(path3, normal_map_path);
     int normal_map_res_x, normal_map_res_y;
-    normal_map = load_file(path3, &normal_map_res_x, &normal_map_res_y);
+    unsigned char* normal_map = load_file(path3, &normal_map_res_x, &normal_map_res_y);
 
 
     // start glut thread
@@ -299,13 +279,13 @@ int main(int argc, char *argv[]) {
     // STEP 3: Create device buffers
     if (DEBUG_KERNEL_INFO) printf("\nSTEP 3: Create device buffers\n");
     
-    cl_mem triangles_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, MAX_NB_TRIANGLE * sizeof(Triangle3), NULL, &status);
+    cl_mem triangles_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nb_triangles * sizeof(Triangle3), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create triangle buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
     cl_mem lights_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, RES * sizeof(LightSource3), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create light buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
-    cl_mem textures_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, RES * sizeof(Texture), NULL, &status);
+    cl_mem textures_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nb_triangles * sizeof(Texture), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create texture buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
     // Create images
@@ -367,7 +347,7 @@ int main(int argc, char *argv[]) {
         if (cube_demo) {
 
             status = loadMaxwellScene(
-                path,
+                obj_path,
                 &cam_coordinate,
                 &cam_lookat
             );
@@ -382,10 +362,10 @@ int main(int argc, char *argv[]) {
             // STEP 4: Write host data to device buffers
             if (DEBUG_KERNEL_INFO) printf("\nSTEP 4: Write host data to device buffers\n");
             
-            status = clEnqueueWriteBuffer(cmdQueue, triangles_buffer, CL_TRUE, 0, real_nb_triangles * sizeof(Triangle3), triangles, 0, NULL, NULL);
+            status = clEnqueueWriteBuffer(cmdQueue, triangles_buffer, CL_TRUE, 0, nb_triangles * sizeof(Triangle3), triangles, 0, NULL, NULL);
             if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write triangle buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clEnqueueWriteBuffer(cmdQueue, textures_buffer, CL_TRUE, 0, real_nb_triangles * sizeof(Texture), textures, 0, NULL, NULL);
+            status = clEnqueueWriteBuffer(cmdQueue, textures_buffer, CL_TRUE, 0, nb_triangles * sizeof(Texture), textures, 0, NULL, NULL);
             if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write texture buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
             status = clEnqueueWriteBuffer(cmdQueue, lights_buffer, CL_TRUE, 0, real_nb_lights * sizeof(LightSource3), lights, 0, NULL, NULL);
@@ -402,7 +382,7 @@ int main(int argc, char *argv[]) {
         
 
 
-            status = clSetKernelArg(kernel, 4, sizeof(cl_int), (void*) &real_nb_triangles);
+            status = clSetKernelArg(kernel, 4, sizeof(cl_int), (void*) &nb_triangles);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set real_nb_triangles*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
             status = clSetKernelArg(kernel, 5, sizeof(cl_mem), (void*) &triangles_buffer);

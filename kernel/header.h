@@ -31,7 +31,7 @@
 
 typedef EE_FLOAT3 Vector3;
 typedef EE_FLOAT3 Point3;
-typedef EE_FLOAT3 rgb;
+typedef EE_FLOAT3 rgb;//TODO: should be refactored
 EE_CONST Vector3 UP = {0, 1, 0};
 EE_CONST Vector3 DOWN = {0, -1, 0};
 
