@@ -15,6 +15,7 @@
   #define EE_FLOAT cl_float
   #define EE_FLOAT2 cl_float2
   #define EE_FLOAT3 cl_float3
+  #define EE_FLOAT4 cl_float4
   #define EE_FLOAT4x4 cl_float16
   #define EE_INT cl_int
   #define EE_CONST const
@@ -23,6 +24,7 @@
   #define EE_FLOAT float
   #define EE_FLOAT2 float2
   #define EE_FLOAT3 float3
+  #define EE_FLOAT4 float4
   #define EE_FLOAT4x4 float16
   #define EE_INT int
   #define EE_CONST __constant
@@ -31,9 +33,10 @@
 
 typedef EE_FLOAT3 Vector3;
 typedef EE_FLOAT3 Point3;
-typedef EE_FLOAT3 rgb;//TODO: should be refactored
+typedef EE_FLOAT4 rgb;//TODO: should be refactored
 EE_CONST Vector3 UP = {0, 1, 0};
 EE_CONST Vector3 DOWN = {0, -1, 0};
+EE_CONST Vector3 RIGHT = {1, 0, 0};
 
 typedef union Matrix3 {
   EE_FLOAT __attribute__ ((packed)) val[4][4];

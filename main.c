@@ -35,8 +35,8 @@ static float FOV = 70.0;
 static char scene_path[] = "src/obj/";
 static char texture_path[] = "src/texture/";
 static char obj_file_name[] = "default.obj";
-static char texture_map_path[] = "minecraft.ppm";
-static char normal_map_path[] = "gimp_raw.ppm";
+static char texture_map_path[] = "default_texture.ppm";
+static char normal_map_path[] = "default_normal.ppm";
 static int SHOW_FPS = 0;
 static int DEBUG_GLOBAL_INFO = 0;
 static int DEBUG_KERNEL_INFO = 0;
@@ -45,8 +45,8 @@ static int DEBUG_HARDWARE_INFO = 0;
 
 #include "math/lib3D.h"
 #include "math/lib3D_debug.h"
-#include "render/image.h"
-#include "scene/sceneLoader.h"
+#include "loader/image.h"
+#include "loader/scene.h"
 #include "opencl_tools.h"
 
 
@@ -247,11 +247,17 @@ int main(int argc, char *argv[]) {
 
     char path2[1000] = "\0";strcat(path2, texture_path);strcat(path2, texture_map_path);
     int texture_map_res_x, texture_map_res_y;
-    unsigned char* texture_map = load_file(path2, &texture_map_res_x, &texture_map_res_y);
+    unsigned char* texture_map;
+    unsigned char* normal_map;
+    status = load_file(path2, &texture_map_res_x, &texture_map_res_y, &texture_map);
+    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Load texture map\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    
 
     char path3[1000] = "\0";strcat(path3, texture_path);strcat(path3, normal_map_path);
     int normal_map_res_x, normal_map_res_y;
-    unsigned char* normal_map = load_file(path3, &normal_map_res_x, &normal_map_res_y);
+    status = load_file(path3, &normal_map_res_x, &normal_map_res_y, &normal_map);
+    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Load normal map\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    
 
 
     // start glut thread
@@ -271,7 +277,7 @@ int main(int argc, char *argv[]) {
     
     cl_command_queue cmdQueue = init_queue(context, devices);
 
-    cl_kernel kernel = init_kernel_program(numDevices, devices, context, "kernel/cast_render_kernel.cl", "simpleCast");
+    cl_kernel kernel = init_kernel_program(numDevices, devices, context, "kernel/cast_render_kernel.cl", "rayTrace");
     clReleaseContext(context);
     free(devices);
 

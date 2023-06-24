@@ -29,9 +29,12 @@ int loadSceneFromFile(
 
     fptr = fopen(path,"r");
     if (fptr == NULL) {
-        printf(" ##### /!\\ File not found ! ##### \n");
+        printf(" ##### /!\\ Obj file not found ! /!\\ #####  (path: %s)\n", path);
         return 0;
     }
+    printf("Loading file : %s \n", path);
+
+    
 
     Point3* point_buffer;
     EE_FLOAT2* texture_buffer;
@@ -62,6 +65,8 @@ int loadSceneFromFile(
     while ((len2 = getline(&line, &len1, fptr)) != -1) {
         EE_FLOAT x, y, z, c1, c2;
         switch (line[0]) {
+        case '#':break;
+        case '\n':break;
         case 'v':
             switch (line[1]) {
                 case ' ':
@@ -76,7 +81,9 @@ int loadSceneFromFile(
                     sscanf(line, "vn %f %f %f", &x, &y, &z);
                     normal_buffer[normal_index++] = (EE_FLOAT3) {x, y, z};
                     break;
-                default:break;
+                default:
+                    printf("Unkown parameter [%.*s]\n", (int) len2-1, line);
+                    break;
             }
             break;
         case 'f':
@@ -100,6 +107,7 @@ int loadSceneFromFile(
             (*triangles)[(*triangle_index)++] = newTriangle3(point_buffer[v2-1], point_buffer[v3-1], point_buffer[v1-1]);
             break;
         default:
+            printf("Unkown parameter [%.*s]\n", (int) len2-1, line);
             break;
         }
 

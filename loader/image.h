@@ -31,12 +31,13 @@ void save_to_file(unsigned char* image_RGBA, char* location, int X_RES, int Y_RE
     if (out_of_bound)
         printf(" ##### /!\\ Color out of bound (%i) !!! ##### \n", out_of_bound);
     
+    printf("Image saved [%s] \n", location);
     fclose(ppmfile);
 }
 
 
-unsigned char* load_file(char* location, int* x_size, int* y_size);
-unsigned char* load_file(char* location, int* x_size, int* y_size) {
+int load_file(char* location, int* x_size, int* y_size, unsigned char** image_RGBA);
+int load_file(char* location, int* x_size, int* y_size, unsigned char** image_RGBA) {
     
     FILE* ppmfile = fopen(location, "rb");
     //printf("load file: %s\n", location);
@@ -46,7 +47,6 @@ unsigned char* load_file(char* location, int* x_size, int* y_size) {
     char line[1000];
     char format[10];
     int max_size = 0;
-    unsigned char* image_RGBA;
 
 
     // Extract magic number
@@ -68,24 +68,28 @@ unsigned char* load_file(char* location, int* x_size, int* y_size) {
     //printf("Size: %d\n", max_size);
     float normalizer = (float) 255/max_size;//<- always use 255 based
 
-    image_RGBA = (unsigned char*) calloc((*x_size) * (*y_size) * 4, sizeof(char));
+    *image_RGBA = (unsigned char*) calloc((*x_size) * (*y_size) * 4, sizeof(char));
 
-    
     if (!strncmp(format, "P6", 2)) {
         int x, y;for (y = *y_size; y-- ;) {
             for (x = *x_size; x-- ;) {
                 char xyz[3];
                 fread(xyz, 1, 3, ppmfile);
-                *(image_RGBA + y*(*x_size)*4 + (*x_size -x-1)*4 +0) = xyz[0]*normalizer;
-                *(image_RGBA + y*(*x_size)*4 + (*x_size -x-1)*4 +1) = xyz[1]*normalizer;
-                *(image_RGBA + y*(*x_size)*4 + (*x_size -x-1)*4 +2) = xyz[2]*normalizer;
+                *(*image_RGBA + y*(*x_size)*4 + (*x_size -x-1)*4 +0) = xyz[0]*normalizer;
+                *(*image_RGBA + y*(*x_size)*4 + (*x_size -x-1)*4 +1) = xyz[1]*normalizer;
+                *(*image_RGBA + y*(*x_size)*4 + (*x_size -x-1)*4 +2) = xyz[2]*normalizer;
             }
         }
-    }//TODO: implement ascii
+        fclose(ppmfile);
+        printf("Image loaded [%s] \n", location);
+        return 0;
+    } else {
+        fclose(ppmfile);
+        printf("Unsupported format");
+        return 1;
+    }
+    return 1;
     
-    fclose(ppmfile);
-
-    return image_RGBA;
 }
 
 #endif // IMAGE_H_

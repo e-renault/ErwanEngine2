@@ -43,6 +43,12 @@ Vector3 getNorm2(Vector3 v1, Vector3 v2) {
     return getNorm(crossProduct(v1,v2));
 }
 
+int isColinear(Vector3 v1, Vector3 v2) {
+    EE_FLOAT magnitudeProduct = getLength2(v1) * getLength2(v2);
+    int diff = dotProduct(v1, v2) - magnitudeProduct;
+    return diff < 0.00001 && diff > -0.00001;
+}
+
 EE_FLOAT getAngle(Vector3 v1, Vector3 v2) {
   EE_FLOAT ret;
 
