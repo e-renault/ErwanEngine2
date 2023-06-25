@@ -196,10 +196,10 @@ __kernel void rayTrace (
     int y = get_global_id(1);
 
     //random
-    unsigned int random=92538073153;
-    randomf((y+703285) * (x+1953825), &random);
-    randomf((y+703285) * (x+1953825), &random);
-    randomf((y+703285) * (x+1953825), &random);
+    unsigned int random=92538073;
+    random_float((y+703285) * (x+1953825), &random);
+    random_float((y+703285) * (x+1953825), &random);
+    random_float((y+703285) * (x+1953825), &random);
 
     //temp
     const float CAM_XFOV_RAD = FOV * (PI / 180);
@@ -219,10 +219,11 @@ __kernel void rayTrace (
 
     /*********** Init cam ***********/
     Vector3 vd_ray = cam_dir;
+    
     Vector3 right = crossProduct(cam_dir, UP);
     vd_ray = rotateAround(vd_ray, right, theta_y);
     
-    Vector3 new_up = crossProduct(vd_ray, right);
+    Vector3 new_up = crossProduct(cam_dir, right);
     vd_ray = rotateAround(vd_ray, new_up, theta_x);
 
     Ray3 ray = (Ray3){.p=cam_point, .v=vd_ray};
@@ -260,19 +261,17 @@ __kernel void rayTrace (
     int hit_count = 0;
     int cast_count = 1;
     if (obj_buffer != -1) {
-        Vector3 v1, v2;
-        hit_count = 1;
+        Vector3 v1;
+        hit_count = 0;
         if (!isColinear(normal_buffer, UP)) {
             v1 = getNorm2(normal_buffer, UP);
-            v2 = getNorm2(normal_buffer, v1);
         } else {
             v1 = getNorm2(normal_buffer, RIGHT);
-            v2 = getNorm2(normal_buffer, v1);
         }
 
-        for (cast_count; cast_count <20; cast_count++) {
-            Vector3 new_vd_ray = rotateAround(normal_buffer, v1, randomf(x*y_res + y, &random) * PI/4);
-            new_vd_ray = rotateAround(new_vd_ray, normal_buffer, randomf(x*y_res + y, &random) * 2 * PI);
+        for (cast_count; cast_count <15; cast_count++) {
+            Vector3 new_vd_ray = rotateAround(normal_buffer, v1, random_float(x*y_res + y, &random) * PI/2);
+            new_vd_ray = rotateAround(new_vd_ray, normal_buffer, random_float(x*y_res + y, &random) * 2 * PI);
             Ray3 new_ray = (Ray3){.p=point_buffer, .v=new_vd_ray};
 
             Point3 global_pos;Vector3 local_pos, normal;float dist;float max_z = 1.5;

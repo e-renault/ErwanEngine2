@@ -3,7 +3,6 @@
 
 #include "../kernel/header.h"
 #include "../kernel/kVector3.h"
-#include "../kernel/kMatrix4x4.h"
 
 Point3 collisionRayPlane(Plane3 pl, Ray3 r, EE_FLOAT* t);
 Point3 collisionRayPlane(Plane3 pl, Ray3 r, EE_FLOAT* t) {
@@ -77,7 +76,7 @@ int getCollisionRayTriangle(Triangle3 t, Ray3 r, EE_FLOAT max_dist, Point3* glob
     *local_point = multiply(t.base, *global_point - t.pl.p);
 
     EE_FLOAT angle = getAngle(t.pl.n, r.v);
-    *normal = (angle>0.5) ? t.pl.n: -(t.pl.n);
+    *normal = (angle>0.5) ? (t.pl.n): -(t.pl.n);
     
     int ret = 0 <= local_point->x;
     ret &= 0 <= local_point->y;

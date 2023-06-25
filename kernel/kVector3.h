@@ -45,8 +45,10 @@ Vector3 getNorm2(Vector3 v1, Vector3 v2) {
 
 int isColinear(Vector3 v1, Vector3 v2) {
     EE_FLOAT magnitudeProduct = getLength2(v1) * getLength2(v2);
-    int diff = dotProduct(v1, v2) - magnitudeProduct;
-    return diff < 0.00001 && diff > -0.00001;
+    int positive = fabs(dotProduct(v1, v2) - magnitudeProduct);
+    int negative = fabs(dotProduct(v1, v2) + magnitudeProduct);
+    return positive < 0.00001 || negative < 0.00001;
+    
 }
 
 EE_FLOAT getAngle(Vector3 v1, Vector3 v2) {
@@ -59,4 +61,37 @@ EE_FLOAT getAngle(Vector3 v1, Vector3 v2) {
 
   return ret;
 }
+
+//TODO: paralellize
+Vector3 rotateAround(Vector3 v, Vector3 unit, EE_FLOAT tetha) {
+    Vector3 ret;
+    EE_FLOAT costetha = cos(tetha);
+
+    Vector3 p1 = costetha * v;
+    Vector3 p2 = ((1-costetha) * dotProduct(v, unit)) * unit;
+    Vector3 p3 = sin(tetha)* crossProduct(unit, v);
+    
+    //add up all
+    ret = p1 + p2 + p3;
+    
+    return ret;
+}
+
+//TODO: paralellize
+Vector3 multiply(Matrix3 m, Vector3 v) {
+    Vector3 ret;
+
+    Vector3 x = *((EE_FLOAT3*) &(m.mat)) *v;
+    ret.x = sum(x);
+
+    Vector3 y = *((EE_FLOAT3*) &(m.mat) + 1) *v;
+    ret.y = sum(y);
+
+    Vector3 z = *((EE_FLOAT3*) &(m.mat) + 2) *v;
+    ret.z = sum(z);
+
+    return ret;
+}
+
+
 #endif // M_KVECTOR3_H_

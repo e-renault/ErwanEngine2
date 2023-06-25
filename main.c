@@ -216,6 +216,7 @@ void extract_params(int argc, char *argv[]) {
     RES = X_RES * Y_RES;
 }
 
+
 int main(int argc, char *argv[]) {
     extract_params(argc, argv);
     

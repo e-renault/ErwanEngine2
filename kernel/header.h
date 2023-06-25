@@ -19,6 +19,7 @@
   #define EE_FLOAT4x4 cl_float16
   #define EE_INT cl_int
   #define EE_CONST const
+  #define EE_MAX_INT CL_UINT_MAX
 #else
   #define EE_ARCCOS(c) (acospi(c))
   #define EE_FLOAT float
@@ -29,6 +30,7 @@
   #define EE_INT int
   #define EE_CONST __constant
   #define PI 3.14159 
+  #define EE_MAX_INT UINT_MAX
 #endif
 
 typedef EE_FLOAT3 Vector3;
