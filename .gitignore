@@ -1,4 +1,5 @@
 *.out
 .vscode/
 _output/
+old/
 image2D_GLFW.c
