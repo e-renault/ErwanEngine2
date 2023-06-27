@@ -2,8 +2,8 @@
 #define GUI_TOOLS_H_
 
 #include <GL/freeglut.h> //for window
-#include "math/mVector3.h"
-#include "math/lib3D_debug.h"
+#include "../math/mVector3.h"
+#include "../math/lib3D_debug.h"
 
 
 /**  DISPLAY SECTION  **/

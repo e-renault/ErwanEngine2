@@ -3,7 +3,7 @@
 
 #include "../kernel/header.h"
 
-rgb getColor2(Texture texture, __read_only image2d_t texture_map, EE_FLOAT cx, EE_FLOAT cy) {
+rgb getColor(Texture texture, __read_only image2d_t texture_map, EE_FLOAT cx, EE_FLOAT cy) {
     int2 img_dim = get_image_dim(texture_map);
 
     float2 vf = cx*texture.v1 + cy*texture.v2 + texture.voff;

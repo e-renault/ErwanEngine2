@@ -19,6 +19,7 @@
 
 #include "loader/image.h"
 #include "loader/scene.h"
+#include "tools/eemacros.h"
 
 
 
@@ -65,8 +66,8 @@ static int cube_demo = 0;
 
 
 /*********** Late include ***********/
-#include "opencl_tools.h"
-#include "gui_tools.h"
+#include "tools/opencl_tools.h"
+#include "tools/gui_tools.h"
 
 
 
@@ -260,18 +261,18 @@ int main(int argc, char *argv[]) {
 
     // init window
     cl_int x_res = X_RES;
-    status = clSetKernelArg(kernel, 0, sizeof(cl_int), (void*) &x_res);
+    status = clSetKernelArg(kernel, ARGUMENT_INDEX_X_RES, sizeof(cl_int), (void*) &x_res);
     if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set X_RES\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
     cl_int y_res = Y_RES;
-    status = clSetKernelArg(kernel, 1, sizeof(cl_int), (void*) &y_res);
+    status = clSetKernelArg(kernel, ARGUMENT_INDEX_Y_RES, sizeof(cl_int), (void*) &y_res);
     if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set Y_RES\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
     cl_float fov = FOV;
-    status = clSetKernelArg(kernel, 2, sizeof(cl_float), (void*) &fov);
+    status = clSetKernelArg(kernel, ARGUMENT_INDEX_FOV, sizeof(cl_float), (void*) &fov);
     if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set FOV\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
-    status = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void*) &render_image);
+    status = clSetKernelArg(kernel, ARGUMENT_INDEX_O_BUFFER, sizeof(cl_mem), (void*) &render_image);
     if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set render_image*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
 
@@ -319,28 +320,28 @@ int main(int argc, char *argv[]) {
         
 
 
-            status = clSetKernelArg(kernel, 4, sizeof(cl_int), (void*) &nb_triangles);
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_NB_TRI, sizeof(cl_int), (void*) &nb_triangles);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set real_nb_triangles*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, 5, sizeof(cl_mem), (void*) &triangles_buffer);
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_TRIS, sizeof(cl_mem), (void*) &triangles_buffer);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set triangles_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, 6, sizeof(cl_mem), (void*) &textures_buffer);
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_MATERIAL, sizeof(cl_mem), (void*) &textures_buffer);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set textures_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, 7, sizeof(cl_int), (void*) &real_nb_lights);
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_NB_LIGHT, sizeof(cl_int), (void*) &real_nb_lights);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set real_nb_lights\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, 8, sizeof(cl_mem), (void*) &lights_buffer);
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_LIGHTS, sizeof(cl_mem), (void*) &lights_buffer);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set lights_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, 9, sizeof(Vector3), (void*) &sky_light_dir);
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_SKY_DIR, sizeof(Vector3), (void*) &sky_light_dir);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set sky_light_dir\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, 12, sizeof(cl_mem), (void*) &texture_map_image);
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_TXT_M, sizeof(cl_mem), (void*) &texture_map_image);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set texture_map_image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, 13, sizeof(cl_mem), (void*) &normal_map_image);
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_NML_M, sizeof(cl_mem), (void*) &normal_map_image);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set normal_map_image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
         }
@@ -348,10 +349,10 @@ int main(int argc, char *argv[]) {
         if (cam_moved) {
             cam_moved = 0;
 
-            status = clSetKernelArg(kernel, 10, sizeof(Point3), (void*) &cam_coordinate);
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_CAM_POS, sizeof(Point3), (void*) &cam_coordinate);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_coordinate\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, 11, sizeof(Vector3), (void*) &cam_lookat);
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_CAM_DIR, sizeof(Vector3), (void*) &cam_lookat);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_lookat\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
         
             // STEP 10: Enqueue the kernel for execution

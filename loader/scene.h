@@ -165,19 +165,19 @@ int loadSceneContext(
         .color = (rgb) {0,0,1},
         .dir = (Vector3) {0,0,0},
         .source = (Point3) {7,2,3},
-        .intensity = 12
+        .luminosity = 12
     };
     lights[(*nb_lights)++] = (LightSource3) {
         .color = (rgb) {1,0,0},
         .dir = (Vector3) {0,0,0},
         .source = (Point3) {0,2,7},
-        .intensity = 12
+        .luminosity = 12
     };
     lights[(*nb_lights)++] = (LightSource3) {
         .color = (rgb) {0,1,0},
         .dir = (Vector3) {0,0,0},
         .source = (Point3) {-7,2,3},
-        .intensity = 12
+        .luminosity = 12
     };
     
     *sky_light_dir = (Vector3) {-0.7, -1, -0.5};
@@ -259,19 +259,19 @@ int loadCubeScene(
         .color = (rgb) {0.80,0.75,0.77},
         .dir = (Vector3) {0,0,0},
         .source = (Point3) {0,alphaz+k/2, 0},
-        .intensity = 12
+        .luminosity = 12
     };
     lights[(*nb_lights)++] = (LightSource3) {
         .color = (rgb) {cos(_rad), cos(_rad+3.14*0.666), cos(_rad+3.14*1.333)},
         .dir = (Vector3) {0,0,0},
         .source = (Point3) {cos_alpha*k*2,0.1,sin_alpha*k*2},
-        .intensity = 12
+        .luminosity = 12
     };
     lights[(*nb_lights)++] = (LightSource3) {
         .color = (rgb) {sin(_rad), sin(_rad+3.14*0.666), sin(_rad+3.14*1.333)},
         .dir = (Vector3) {0,0,0},
         .source = (Point3) {cos_alpha*k*2,0.1,cos_alpha*k*2},
-        .intensity = 12
+        .luminosity = 12
     };
     
     return *nb_triangle;

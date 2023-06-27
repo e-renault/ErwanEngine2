@@ -4,12 +4,11 @@ Here is my second version of the ErwanEngine, implemented in C using opencl to i
 
 ![preview](https://github.com/e-renault/ErwanEngine2/blob/main/_output/cheval_hd_light_dark.png?raw=true)
 
+Currently in developpement. Some strange behaviours could occure.
+
 **This is an early buggy access**
 
-The program can lead to a high CPU and GPU T° since it has not be designed to take care of hardware capabilities.
-
-Currently, lights are experimental and cannot be changed (hard coded stuffs).
-
+/!\ The program can lead to a high CPU and GPU T° since it has not be designed to take care of hardware capabilities.
 
 ## Install
 You would probably need to install :
@@ -29,9 +28,6 @@ You can use the command :
 $ gcc main.c -lm -lOpenCL -lpthread -lGL -lglut 
 ```
 
-optional: 
-`-DDEBUG_RUN_INFO=1` -> additionnal debug info
-
 ## Run
 ```
 ./a.out [--optionnals arguments]
@@ -40,7 +36,7 @@ optional:
 optional:
 ```
 --obj  [OBJ_FILE_TO_LOAD]               (default:"default.obj")  <- you should use one of the Availables scenes (see section "Available scenes").
---texture [PPM_FILE_TO_LOAD]            (default:"minecraft.ppm")<- image file should be converted to raw ppm file (P6)
+--texture [PPM_FILE_TO_LOAD]            (default:"default_texture.ppm")<- image file should be converted to raw ppm file (P6)
 --FOV   [FIELD_OF_VIEW_IN_DEGREE]       (default:70)
 --XRES  [HORISONTAL_RESOLUTION_IN_PX]   (default:800)
 --YRES  [VERTICAL_RESOLUTION_IN_PX]     (default:600)
@@ -53,15 +49,16 @@ debug (experimental):
 --GINFO
 --KINFO
 --HINFO
+--RINFO
 ```
 
 ## Available scenes
 This is what files you can use using "--obj=" argument. You should also provide the "--texture=" texture
 
- * crate.obj
- * default.obj
- * maxwell.obj
- * minecraft.obj
+ * crate        --obj=crate.obj     --texture=crate.ppm
+ * maxwell      --obj=maxwell.obj   --texture=maxwell.ppm
+ * minecraft    --obj=minecraft.obj --texture=minecraft.ppm
+ * ball         --obj=ball.obj      --texture=ball.ppm
 
 ## Controls
 ### Camera
@@ -71,7 +68,7 @@ This is what files you can use using "--obj=" argument. You should also provide 
     `oklm`    -> rotate camera
 
 ### Misk (experimental)
-    `r`    -> super secret mode
+    `r`    -> auto rotate around point 000
     `t/g`  -> increase/decrease sun x vector property 
     `y/h`  -> increase/decrease sun y vector property
     `u/j`  -> increase/decrease sun z vector property

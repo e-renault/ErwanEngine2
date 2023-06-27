@@ -76,6 +76,7 @@ typedef struct __attribute__ ((packed)) Texture {
     EE_FLOAT2 v1;
     EE_FLOAT2 v2;
     EE_FLOAT2 voff;
+    EE_FLOAT2 luminance;
 } Texture;
 
 
@@ -84,7 +85,7 @@ typedef struct __attribute__ ((packed)) LightSource3 {
     rgb color;
     Vector3 dir;
     Point3 source;
-    EE_FLOAT intensity;
+    EE_FLOAT luminosity;
 } LightSource3;
 
 #endif

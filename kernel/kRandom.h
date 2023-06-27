@@ -2,6 +2,7 @@
 #define RANDOM_H_
 #include "header.h"
 
+//TODO use unsigned long instead 
 int random_int(unsigned int globalID, unsigned int* randoms);
 int random_int(unsigned int globalID, unsigned int* randoms) {
     unsigned int seed = *randoms & globalID;
