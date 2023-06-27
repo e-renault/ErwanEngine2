@@ -5,20 +5,17 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <string.h>
-#include "../math/lib3D.h"
+
+#include "../math/mVector3.h"
+#include "../math/mMatrix3.h"
+#include "../math/mObject3.h"
 #include "../math/lib3D_debug.h"
 
-int loadSceneFromFile(
+int load_obj_file(
         char* path,
         int* triangle_index,
         Triangle3** triangles,
-        Texture** textures,
-        int* nb_lights,//TODO: should be deleted
-        LightSource3* lights,//TODO: should be deleted
-        Point3* cam_coordinate,
-        Vector3* cam_lookat,
-        Vector3* sky_light_dir,//TODO: should be refactored
-        Texture* sky_light_texture//TODO: should be refactored
+        Texture** textures
     ) {
 
     FILE *fptr;
@@ -148,8 +145,18 @@ int loadSceneFromFile(
     if (line)
         free(line);
 
+    return 1;
+}
 
-    //TODO: to refactor
+//TODO: should be rethinked
+int loadSceneContext(
+        int* nb_lights,
+        LightSource3* lights,
+        Point3* cam_coordinate,
+        Vector3* cam_lookat,
+        Vector3* sky_light_dir
+    ) {
+
     *cam_coordinate = (Point3) {0.5, 0.5, 2.0};
     *cam_lookat = (Vector3) {0, 0, -1};
 
@@ -174,13 +181,11 @@ int loadSceneFromFile(
     };
     
     *sky_light_dir = (Vector3) {-0.7, -1, -0.5};
-    *sky_light_texture = (Texture) {
-        .color1={0.58,  0.78,  0.92},
-        .color2={1.3,   1.3,   1.3},//sky lum base_ref
-        .color3={0,     0,     1}
-    };
+
     return 1;
 }
+
+
 
 //TODO: To be deleted (c'était drole mais bon à un moment faut stop)
 int loadCubeScene(

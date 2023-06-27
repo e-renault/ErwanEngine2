@@ -1,7 +1,9 @@
 #ifndef LIB3D_DEBUG_H_
 #define LIB3D_DEBUG_H_
 
-#include "lib3D.h"
+#include "../math/mVector3.h"
+#include "../math/mMatrix3.h"
+#include "../math/mObject3.h"
 
 void printPoint3(Point3 p) {
     printf("(%f, %f, %f)", p.x, p.y, p.z);

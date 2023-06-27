@@ -5,6 +5,7 @@
   #include <math.h>
   #include <float.h>
   #include <stdio.h>
+  #define CL_TARGET_OPENCL_VERSION 300
   #ifdef __APPLE__
     #include <OpenCL/opencl.h>
   #else
@@ -35,7 +36,7 @@
 
 typedef EE_FLOAT3 Vector3;
 typedef EE_FLOAT3 Point3;
-typedef EE_FLOAT4 rgb;//TODO: should be refactored
+typedef EE_FLOAT4 rgb;//TODO: should be refactored ?
 EE_CONST Vector3 UP = {0, 1, 0};
 EE_CONST Vector3 DOWN = {0, -1, 0};
 EE_CONST Vector3 RIGHT = {1, 0, 0};
@@ -75,12 +76,10 @@ typedef struct __attribute__ ((packed)) Texture {
     EE_FLOAT2 v1;
     EE_FLOAT2 v2;
     EE_FLOAT2 voff;
-    
-    rgb color1;//TODO: Deprecated
-    rgb color2;//TODO: Deprecated
-    rgb color3;//TODO: Deprecated
 } Texture;
 
+
+//TODO: should be deleted ?
 typedef struct __attribute__ ((packed)) LightSource3 {
     rgb color;
     Vector3 dir;

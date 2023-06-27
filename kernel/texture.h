@@ -3,21 +3,6 @@
 
 #include "../kernel/header.h"
 
-//TODO: Deprecated
-rgb getColor(Texture texture, EE_FLOAT cx, EE_FLOAT cy) {
-    int x = cx * 1;
-    int y = cy * 1;
-
-    rgb cbase = (texture.color1 * (1-(cy+cx)));
-    rgb colorx = (texture.color2 * cx);
-    rgb colory = (texture.color3 * cy);
-
-    rgb ret = (cbase + colorx);
-    ret = (ret + colory);
-    
-    return ret;
-}
-
 rgb getColor2(Texture texture, __read_only image2d_t texture_map, EE_FLOAT cx, EE_FLOAT cy) {
     int2 img_dim = get_image_dim(texture_map);
 

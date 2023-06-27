@@ -1,32 +1,33 @@
-// cd /media/erenault/EXCHANGE/workspaces/ErwanEngine2/opencl/
+// cdee
 // gcc main.c -lm -lOpenCL -lpthread -lGL -lglut
-// optional: -DDEBUG_RUN_INFO=1
-// ./a.out --file cheval.obj --FPS
+// ./a.out --obj maxwell.obj --texture maxwell.ppm --FPS
 
-#define CL_TARGET_OPENCL_VERSION 300
+/*********** Please select you GPU there ***********/
 #define USE_DEVICE_ID 0
 #define USE_PLATFORM_ID 0
 
-#ifndef DEBUG_RUN_INFO
-    #define DEBUG_RUN_INFO 0
-#endif
-
-#include <stdio.h>
-#include <sys/stat.h> //extract kernel
-#include <stdlib.h> //malloc
-#include <pthread.h> //obvious
-#include <sys/time.h> //FPS counter
-#include <getopt.h> //argument parameter parser
-#include "kernel/header.h" //opencl & cie
-
-#include <GL/freeglut.h> //for window
 
 
+/*********** Static includes ***********/
+#include "kernel/header.h"  //opencl & cie
+#include <stdio.h>          //IO
+#include <sys/stat.h>       //extract kernel
+#include <stdlib.h>         //malloc
+#include <sys/time.h>       //FPS counter
+#include <getopt.h>         //argument parameter parser
+#include <pthread.h>        //obvious
+
+#include "loader/image.h"
+#include "loader/scene.h"
+
+
+
+/*********** Globals variables ***********/
 // constants
 static const char* SUCCESS_MSG = "(Done)";
 static const char* ERROR_MSG = "(Error)";
 
-/* Global vars */
+
 // frame definition (default)
 static int Y_RES = 600;
 static int X_RES = 800;
@@ -37,17 +38,14 @@ static char texture_path[] = "src/texture/";
 static char obj_file_name[] = "default.obj";
 static char texture_map_path[] = "default_texture.ppm";
 static char normal_map_path[] = "default_normal.ppm";
+
+
+// debug
 static int SHOW_FPS = 0;
 static int DEBUG_GLOBAL_INFO = 0;
 static int DEBUG_KERNEL_INFO = 0;
 static int DEBUG_HARDWARE_INFO = 0;
-
-
-#include "math/lib3D.h"
-#include "math/lib3D_debug.h"
-#include "loader/image.h"
-#include "loader/scene.h"
-#include "opencl_tools.h"
+static int DEBUG_RUN_INFO = 0;
 
 
 // scene description
@@ -55,12 +53,7 @@ static unsigned char* output_render_buffer;
 static Point3 cam_coordinate;
 static Vector3 cam_lookat;
 static Vector3 sky_light_dir;//direction of the sun light
-static Texture sky_light_texture;//sky texture see vvv
-/*
-    color1: horizon (color used for global ilumination)
-    color2: void
-    color3: Sky
-*/
+
 
 // program flow control
 static int program_running_loop = 1;
@@ -70,78 +63,11 @@ static int new_frame = 1;
 static int cube_demo = 0;
 
 
-/**  DISPLAY SECTION  **/
-void display_callback();
-void display_callback(){
-    if (new_frame) {
-        new_frame=0;
-        
-        glClearColor( 0, 0, 0, 1 );
-        glClear( GL_COLOR_BUFFER_BIT );
 
-        //draw pixels
-        glDrawPixels( X_RES, Y_RES, GL_RGBA, GL_UNSIGNED_BYTE, output_render_buffer );
-        glutSwapBuffers();
-    }
-    glutPostRedisplay();
-}
+/*********** Late include ***********/
+#include "opencl_tools.h"
+#include "gui_tools.h"
 
-void keyboard(unsigned char key, int xmouse, int ymouse);
-void keyboard(unsigned char key, int xmouse, int ymouse) {
-    Vector3 rightVector = crossProduct(cam_lookat, UP);
-    switch (key) {
-        case 'z':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(0.1, cam_lookat));cam_moved = 1;break;
-        case 's':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(-0.1f, cam_lookat));cam_moved = 1;break;
-        case 'q':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(-0.1, rightVector));cam_moved = 1;break;
-        case 'd':cam_coordinate = add_vector3(cam_coordinate, scale_vector3(0.1f, rightVector));cam_moved = 1;break;
-        case ' ':cam_coordinate.y += 0.1;cam_moved = 1;break;
-        case 'e':cam_coordinate.y -= 0.1;cam_moved = 1;break;
-        case 'm':cam_lookat = rotateAround(cam_lookat, UP, -0.1f);cam_moved = 1;break;
-        case 'k':cam_lookat = rotateAround(cam_lookat, UP, 0.1f);cam_moved = 1;break;
-        case 'o': if (getAngle(cam_lookat, UP) > 0.2f) cam_lookat = rotateAround(cam_lookat, rightVector, 0.1f);cam_moved = 1;break;
-        case 'l': if (getAngle(cam_lookat, DOWN) > 0.2f) cam_lookat = rotateAround(cam_lookat, rightVector, -0.1f);cam_moved = 1;break;
-        case 't':sky_light_dir.x +=0.1;scene_changed = 1;break;
-        case 'g':sky_light_dir.x -=0.1;scene_changed = 1;break;
-        case 'y':sky_light_dir.y +=0.1;scene_changed = 1;break;
-        case 'h':sky_light_dir.y -=0.1;scene_changed = 1;break;
-        case 'u':sky_light_dir.z +=0.1;scene_changed = 1;break;
-        case 'j':sky_light_dir.z -=0.1;scene_changed = 1;break;
-        case 'r':cube_demo = !cube_demo; break;
-        case 'x':
-            program_running_loop = 0;
-            glutLeaveMainLoop();
-            break;
-        default:
-            break;
-    }
-    if (SHOW_FPS) {
-        printf("\rCam: {pos: ");
-        printPoint3(cam_coordinate);
-        printf(", dir: ");
-        printVector3(cam_lookat);
-        printf("} - Sun_light: {");
-        printVector3(sky_light_dir);
-        printf("}   ");
-    }
-}
-
-void* start_glut(void *vargp);
-void* start_glut(void *vargp) {
-    if (DEBUG_GLOBAL_INFO) printf("GLUT Start\n");
-    //init GLUT
-    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
-    glutInitWindowSize(X_RES, Y_RES);
-    glutCreateWindow("ErwanEngine2.0");
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-    //display loop
-    glutDisplayFunc(display_callback);
-    glutKeyboardFunc(keyboard);
-    glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
-    glutMainLoop();
-    program_running_loop = 0;
-    if (DEBUG_GLOBAL_INFO) printf("GLUT Exit\n");
-}
 
 
 /** LOCAL FUNCTIONNALITIES **/
@@ -163,6 +89,7 @@ void extract_params(int argc, char *argv[]) {
             {"GINFO",   no_argument,       &DEBUG_GLOBAL_INFO,  1 },
             {"KINFO",   no_argument,       &DEBUG_KERNEL_INFO,  1 },
             {"HINFO",   no_argument,       &DEBUG_HARDWARE_INFO,  1 },
+            {"RINFO",   no_argument,       &DEBUG_RUN_INFO,     1 },
             {0,         0,                 0,  0 }
 
         };
@@ -217,6 +144,7 @@ void extract_params(int argc, char *argv[]) {
 }
 
 
+
 int main(int argc, char *argv[]) {
     extract_params(argc, argv);
     
@@ -237,13 +165,15 @@ int main(int argc, char *argv[]) {
 
     char obj_path[1000] = "\0";strcat(obj_path, scene_path);strcat(obj_path, obj_file_name);
     if (DEBUG_GLOBAL_INFO) printf("Loading : %s\n", obj_path);
-    status = loadSceneFromFile(
+    status = load_obj_file(
         obj_path,
         &nb_triangles, &triangles,
-        &textures,
+        &textures
+    );
+    status = loadSceneContext(
         &real_nb_lights, lights,
         &cam_coordinate,&cam_lookat,
-        &sky_light_dir,&sky_light_texture
+        &sky_light_dir
     );
 
     char path2[1000] = "\0";strcat(path2, texture_path);strcat(path2, texture_map_path);
@@ -407,13 +337,10 @@ int main(int argc, char *argv[]) {
             status = clSetKernelArg(kernel, 9, sizeof(Vector3), (void*) &sky_light_dir);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set sky_light_dir\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, 10, sizeof(Texture), (void*) &sky_light_texture);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set sky_light_texture\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clSetKernelArg(kernel, 13, sizeof(cl_mem), (void*) &texture_map_image);
+            status = clSetKernelArg(kernel, 12, sizeof(cl_mem), (void*) &texture_map_image);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set texture_map_image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, 14, sizeof(cl_mem), (void*) &normal_map_image);
+            status = clSetKernelArg(kernel, 13, sizeof(cl_mem), (void*) &normal_map_image);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set normal_map_image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
         }
@@ -421,10 +348,10 @@ int main(int argc, char *argv[]) {
         if (cam_moved) {
             cam_moved = 0;
 
-            status = clSetKernelArg(kernel, 11, sizeof(Point3), (void*) &cam_coordinate);
+            status = clSetKernelArg(kernel, 10, sizeof(Point3), (void*) &cam_coordinate);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_coordinate\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, 12, sizeof(Vector3), (void*) &cam_lookat);
+            status = clSetKernelArg(kernel, 11, sizeof(Vector3), (void*) &cam_lookat);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_lookat\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
         
             // STEP 10: Enqueue the kernel for execution

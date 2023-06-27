@@ -2,8 +2,8 @@
 #define IMAGE_H_
 
 #include <stdio.h>
-#include "../kernel/header.h"
 #include <string.h>
+#include "../kernel/header.h"
 
 void save_to_file(unsigned char* image_RGBA, char* location, int X_RES, int Y_RES);
 void save_to_file(unsigned char* image_RGBA, char* location, int X_RES, int Y_RES) {

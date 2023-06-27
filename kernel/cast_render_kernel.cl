@@ -3,7 +3,7 @@
 #include "kernel/color.h"
 #include "kernel/random.h"
 
-
+/**
 __kernel void rayCast (
         int x_res,
         int y_res,
@@ -30,7 +30,7 @@ __kernel void rayCast (
     int i, j;
 
 
-    /*********** Init frame ***********/
+    /*********** Init frame ***********
     //get frame coordinates
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -51,7 +51,7 @@ __kernel void rayCast (
     float theta_y = step_x_rad * (y - y_res/2);
 
 
-    /*********** Init cam ***********/
+    /*********** Init cam ***********
     Vector3 vd_ray = cam_dir;
     Vector3 right = crossProduct(cam_dir, UP);
     vd_ray = rotateAround(vd_ray, right, theta_y);
@@ -62,7 +62,7 @@ __kernel void rayCast (
     Ray3 ray = (Ray3){.p=cam_point, .v=vd_ray};
     
 
-    /*********** Sky color ***********/
+    /*********** Sky color ***********
     float theta = getAngle(vd_ray, UP);
 
     if (theta > 0.5){
@@ -74,7 +74,7 @@ __kernel void rayCast (
     }
 
 
-    /*********** first cast ***********/
+    /*********** first cast ***********
     for(i = 0; i<nb_triangle; i++) {
         //get collision with triangle
         Point3 global_pos;Vector3 local_pos;Vector3 normal;float dist;
@@ -91,7 +91,7 @@ __kernel void rayCast (
         }
     }
 
-    /*********** hard shadows ***********/
+    /*********** hard shadows ***********
     rgb direct_light_buffer = sky_color.color2;
     if (obj_buffer != -1) {
         Ray3 r = (Ray3) {.p=point_buffer, .v=-sky_light_dir};
@@ -110,7 +110,7 @@ __kernel void rayCast (
     }
 
 
-    /*********** soft shadows ***********/
+    /*********** soft shadows ***********
     rgb scene_light_buffer = (rgb) {0,0,0, 1};
     if (obj_buffer != -1) {
         for(j = 0; j<nb_lights; j++) {
@@ -138,7 +138,7 @@ __kernel void rayCast (
         }
     }
 
-    /*********** Build up final render ***********/
+    /*********** Build up final render ***********
     rgb lignt_sum = cap((direct_light_buffer + scene_light_buffer));
     //rgb c = scene_light_buffer;                           //neon render
     rgb c = min(direct_light_buffer, color_value_buffer);   //only sun illum
@@ -152,7 +152,11 @@ __kernel void rayCast (
     );
     
     write_imageui(final_outut_buffer, (int2)(x, y), color);
-} 
+} **/
+
+__constant rgb sky_color_color1 = (rgb) {0.58,  0.78,  0.92,   1};
+__constant rgb sky_color_color2 = (rgb) {1.3,   1.3,   1.3,    1};
+__constant rgb sky_color_color3 = (rgb) {0,     0,     1,      1};
 
 __kernel void rayTrace (
         int x_res,
@@ -168,7 +172,6 @@ __kernel void rayTrace (
         __constant LightSource3* lights,
 
         Vector3 sky_light_dir,
-        Texture sky_color,
 
         Point3 cam_point,
         Vector3 cam_dir,
@@ -233,12 +236,11 @@ __kernel void rayTrace (
     float theta = getAngle(vd_ray, UP);
 
     if (theta > 0.5){
-        float heigth = 2*(theta - 0.5);
-        color_value_buffer = getColor(sky_color, heigth, 0);
+        color_value_buffer = (sky_color_color2 * (2*theta - 1)) + (sky_color_color1 * (2- 2*theta));
     } else {
-        float heigth = 1- 2*theta;
-        color_value_buffer = getColor(sky_color, 0, heigth);
+        color_value_buffer = (sky_color_color3 * (1- 2*theta)) + (sky_color_color1 * (2*theta));
     }
+    
 
     /*********** 1st cast ***********/
     for(i = 0; i<nb_triangle; i++) {
