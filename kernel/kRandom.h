@@ -5,7 +5,7 @@
 //TODO use unsigned long instead 
 int random_int(unsigned int globalID, unsigned int* randoms);
 int random_int(unsigned int globalID, unsigned int* randoms) {
-    unsigned int seed = *randoms & globalID;
+    unsigned int seed = *randoms ^ globalID;
     unsigned int result = (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
     *randoms = result;
     return result;

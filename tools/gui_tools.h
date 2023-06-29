@@ -59,6 +59,7 @@ void keyboard(unsigned char key, int xmouse, int ymouse) {
         printVector3(sky_light_dir);
         printf("}   ");
     }
+    sem_post(&mutex);
 }
 
 void* start_glut(void *vargp);

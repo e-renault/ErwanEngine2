@@ -11,6 +11,55 @@
 #include "../math/mObject3.h"
 #include "../math/lib3D_debug.h"
 
+
+int load_mtl_file(
+        char* path
+    ) {
+
+    FILE *fptr;
+    size_t len1, len2;
+    char* line = NULL;
+    char* rest;
+    char* identifier;
+
+    fptr = fopen(path,"r");
+    if (fptr == NULL) {
+        printf(" ##### /!\\ Obj file not found ! /!\\ #####  (path: %s)\n", path);
+        return 0;
+    }
+    printf("Loading file : %s \n", path);
+
+    char material_name[10][50];
+    int material_name_index = 0;
+
+    while ((len2 = getline(&line, &len1, fptr)) != -1) {
+        EE_FLOAT r, g, b;
+        if (strncmp(line, "newmtl", 6)) {
+            sscanf(line, "newmtl %s", material_name[material_name_index++]);
+            printf("Material: %s\n", material_name[material_name_index-1]);
+        } else if (strncmp(line, "Ka", 2)) {
+            sscanf(line, "Ka %f %f %f", &r, &g, &b);
+        } else if (strncmp(line, "Ke", 2)) {
+            sscanf(line, "Ke %f %f %f", &r, &g, &b);
+        } else if (strncmp(line, "map_Ka", 6)) {
+            char texture_file_name[200];
+            sscanf(line, "map_Ka %s", texture_file_name);
+            printf("Texture: %s\n", texture_file_name);
+            //TODO: load texture
+        } else {
+            printf("Unkown parameter [%.*s]\n", (int) len2-1, line);
+        }
+    }
+
+    printf("loaded : \%s -> \n", path);
+
+    fclose(fptr);
+    if (line)
+        free(line);
+
+    return 1;
+}
+
 int load_obj_file(
         char* path,
         int* triangle_index,

@@ -76,9 +76,16 @@ typedef struct __attribute__ ((packed)) Texture {
     EE_FLOAT2 v1;
     EE_FLOAT2 v2;
     EE_FLOAT2 voff;
-    EE_FLOAT2 luminance;
 } Texture;
 
+typedef struct __attribute__ ((packed)) Material {
+    char newmtl[200];
+    EE_INT newmtl_index;
+    rgb Ka;
+    rgb Ke;
+    Texture map_Ka;
+    EE_INT map_Ka_index;
+} Material;
 
 //TODO: should be deleted ?
 typedef struct __attribute__ ((packed)) LightSource3 {

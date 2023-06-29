@@ -12,10 +12,13 @@
 #include "kernel/header.h"  //opencl & cie
 #include <stdio.h>          //IO
 #include <sys/stat.h>       //extract kernel
-#include <stdlib.h>         //malloc
+#include <stdlib.h>         //malloc & rand
 #include <sys/time.h>       //FPS counter
 #include <getopt.h>         //argument parameter parser
 #include <pthread.h>        //obvious
+#include <semaphore.h>      //obvious
+#include <unistd.h>         //semaphore too ? I think.
+  
 
 #include "loader/image.h"
 #include "loader/scene.h"
@@ -62,6 +65,9 @@ static int scene_changed = 1;
 static int cam_moved = 1;
 static int new_frame = 1;
 static int cube_demo = 0;
+
+// semaphores
+sem_t mutex;
 
 
 
@@ -153,6 +159,8 @@ int main(int argc, char *argv[]) {
     
     cl_int status;
     cl_int x, y, i;
+    srand(time(NULL));
+
 
     // load scene components
     output_render_buffer = (unsigned char*) calloc(RES, sizeof(char) * 4);
@@ -278,7 +286,7 @@ int main(int argc, char *argv[]) {
 
 
 
-    int frame = 0, timebase = 0;//used for FPS counter
+    int frame = 0, timebase = 0, iteration_counter = 0;//used for FPS counter
     do {
         struct timeval stop, start;
         gettimeofday(&start, NULL);
@@ -354,7 +362,15 @@ int main(int argc, char *argv[]) {
 
             status = clSetKernelArg(kernel, ARGUMENT_INDEX_CAM_DIR, sizeof(Vector3), (void*) &cam_lookat);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_lookat\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-        
+            
+            int r = rand();
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_IT_COUNT, sizeof(cl_int), (void*) &r);
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_coordinate\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+            int iteration_counter = 0;
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_RD_SEED, sizeof(cl_int), (void*) &iteration_counter);
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_lookat\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            
             // STEP 10: Enqueue the kernel for execution
             if (DEBUG_RUN_INFO)  printf("\nSTEP 10: Enqueue the kernel for execution (new frame)\n");
             fflush(stdout);
@@ -413,9 +429,6 @@ int main(int argc, char *argv[]) {
 
             new_frame = 1;
         }
-        
-    
-        
 
 
         gettimeofday(&stop, NULL);
@@ -425,6 +438,9 @@ int main(int argc, char *argv[]) {
         long int microsec = (stop.tv_usec - start.tv_usec) %1000;
         if (DEBUG_RUN_INFO) printf("took %lis %lims %lius\n", sec, milisec, microsec); 
         
+        
+        sem_wait(&mutex);
+
     } while(program_running_loop);
     
     save_to_file(output_render_buffer, "_output/output.ppm", X_RES, Y_RES);

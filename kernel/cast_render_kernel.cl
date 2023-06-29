@@ -68,18 +68,14 @@ __kernel void rayTrace (
         __constant LightSource3* lights,
 
         Point3 cam_point,
-        Vector3 cam_dir
+        Vector3 cam_dir,
 
-        //unsigned int random_seed,
-        //int iteration_count
-        //__global float* z_value_buffer,
-        //__global Vector3* normal_buffer,
-        //__global Point3* point_buffer,
         //__global rgb* color_value_buffer,
-        //__global int* obj_buffer,
-        //__global Ray3* ray_buffer,
-        //__global rgb* direct_light_buffer,
-        //__global rgb* scene_light_buffer,
+        //__global rgb* global_illum_buffer,
+
+        int iteration_count,
+        unsigned int random_seed
+
 
         ) {
     int i, j;
@@ -91,10 +87,9 @@ __kernel void rayTrace (
     int y = get_global_id(1);
 
     //random
-    unsigned int random=92538073;
-    random_float((y+703285) * (x+1953825), &random);
-    random_float((y+703285) * (x+1953825), &random);
-    random_float((y+703285) * (x+1953825), &random);
+    unsigned int random=random_seed;
+    
+    
 
     //temp
     const float CAM_XFOV_RAD = FOV * (PI / 180);
@@ -173,6 +168,7 @@ __kernel void rayTrace (
     /*********** EEAO ***********/
     int hit_count = 0;
     int cast_count = 1;
+    
     if (obj_buffer != -1) {
         Vector3 v1;
         cast_count = 0;
@@ -182,7 +178,7 @@ __kernel void rayTrace (
             v1 = getNorm2(normal_buffer, RIGHT);
         }
 
-        for (cast_count; cast_count <=1; cast_count++) {
+        for (cast_count; cast_count <=15; cast_count++) {
             Vector3 new_vd_ray = rotateAround(normal_buffer, v1, random_float(x*y_res + y, &random) * PI/2);
             new_vd_ray = rotateAround(new_vd_ray, normal_buffer, random_float(x*y_res + y, &random) * 2 * PI);
             Ray3 new_ray = (Ray3){.p=point_buffer, .v=new_vd_ray};
