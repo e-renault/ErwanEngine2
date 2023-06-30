@@ -13,7 +13,8 @@
 
 
 int load_mtl_file(
-        char* path
+        char* path,
+        Material** materials
     ) {
 
     FILE *fptr;
@@ -29,29 +30,44 @@ int load_mtl_file(
     }
     printf("Loading file : %s \n", path);
 
-    char material_name[10][50];
-    int material_name_index = 0;
+    int material_index = 0;
+    *materials = malloc(sizeof(Material) * 30);
 
     while ((len2 = getline(&line, &len1, fptr)) != -1) {
         EE_FLOAT r, g, b;
-        if (strncmp(line, "newmtl", 6)) {
-            sscanf(line, "newmtl %s", material_name[material_name_index++]);
-            printf("Material: %s\n", material_name[material_name_index-1]);
-        } else if (strncmp(line, "Ka", 2)) {
-            sscanf(line, "Ka %f %f %f", &r, &g, &b);
-        } else if (strncmp(line, "Ke", 2)) {
+        if (line[0] == '\n') {
+        } else if (line[0] == '#') {
+        } else if (strncmp(line, "newmtl", 6) == 0) {
+            material_index++;
+            strncpy((*materials)[material_index].newmtl, line + 6, 200);
+            (*materials)[material_index].newmtl[strlen((*materials)[material_index].newmtl) -1] = '\0';
+            //printf("Material: %s\n", (*materials)[material_index].newmtl);
+        } else if (strncmp(line, "Kd", 2) == 0) {
+            sscanf(line, "Kd %f %f %f", &r, &g, &b);
+            (*materials)[material_index].Ka = (rgb) {r, g, b, 1};
+            //printf("Color base: %f %f %f\n", r, g, b);
+        } else if (strncmp(line, "Ke", 2) == 0) {
             sscanf(line, "Ke %f %f %f", &r, &g, &b);
-        } else if (strncmp(line, "map_Ka", 6)) {
-            char texture_file_name[200];
-            sscanf(line, "map_Ka %s", texture_file_name);
-            printf("Texture: %s\n", texture_file_name);
-            //TODO: load texture
+            (*materials)[material_index].Ke = (rgb) {r, g, b, 1};
+            //printf("Color emmision: %f %f% f\n", r, g, b);
+        } else if (strncmp(line, "map_Kd", 6) == 0) {
+            strncpy((*materials)[material_index].texture_path, line + 6, 200);
+            (*materials)[material_index].texture_path[strlen((*materials)[material_index].texture_path) -1] = '\0';
+            (*materials)[material_index].hasTexture = 1;
+            //printf("Texture: %s\n", (*materials)[material_index].texture_path);
+        } else if (strncmp(line, "Ns", 2) == 0) {
+        } else if (strncmp(line, "Ka", 2) == 0) {
+        } else if (strncmp(line, "Ks", 2) == 0) {
+        } else if (strncmp(line, "Ni", 2) == 0) {
+        } else if (strncmp(line, "illum", 5) == 0) {
+        } else if (strncmp(line, "d ", 2) == 0) {
         } else {
             printf("Unkown parameter [%.*s]\n", (int) len2-1, line);
         }
+        //TODO malloc materials size
     }
 
-    printf("loaded : \%s -> \n", path);
+    printf("loaded : %s -> %i materials\n", path, material_index);
 
     fclose(fptr);
     if (line)
@@ -113,6 +129,16 @@ int load_obj_file(
         switch (line[0]) {
         case '#':break;
         case '\n':break;
+        case 'o':
+            //TODO
+            break;
+        case 'm':
+            if (strncmp(line, "mtllib", 6) == 0) {
+                //TODO
+            } else {
+                printf("Unkown parameter [%.*s]\n", (int) len2-1, line);
+            }
+            break;
         case 'v':
             switch (line[1]) {
                 case ' ':
@@ -152,6 +178,7 @@ int load_obj_file(
             (*textures)[texture_index++] = (Texture) {.v1=vtx,.v2=vty,.voff=voff};
             (*triangles)[(*triangle_index)++] = newTriangle3(point_buffer[v2-1], point_buffer[v3-1], point_buffer[v1-1]);
             break;
+        case 's':break;
         default:
             printf("Unkown parameter [%.*s]\n", (int) len2-1, line);
             break;

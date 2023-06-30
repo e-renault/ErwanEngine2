@@ -70,8 +70,7 @@ __kernel void rayTrace (
         Point3 cam_point,
         Vector3 cam_dir,
 
-        //__global rgb* color_value_buffer,
-        //__global rgb* global_illum_buffer,
+        __global LocalPixelData* pixel,
 
         int iteration_count,
         unsigned int random_seed
@@ -85,6 +84,7 @@ __kernel void rayTrace (
     //get frame coordinates
     int x = get_global_id(0);
     int y = get_global_id(1);
+    int pos = y * x_res + x;
 
     //random
     unsigned int random=random_seed;
@@ -96,18 +96,17 @@ __kernel void rayTrace (
     float step_x_rad = CAM_XFOV_RAD / x_res;
 
     //init local var
-    float z_value_buffer = FLT_MAX;
-    Vector3 normal_buffer;
-    Point3 point_buffer;
-    rgb color_value_buffer;
-    int obj_buffer = -1;
+    pixel[pos].z_value_buffer = FLT_MAX;
+    pixel[pos].obj_buffer = -1;
+
+
+
+    /*********** Init cam ***********/
 
     //convert frame location to rotation
     float theta_x = step_x_rad * (x - x_res/2);
     float theta_y = step_x_rad * (y - y_res/2);
 
-
-    /*********** Init cam ***********/
     Vector3 vd_ray = cam_dir;
     
     Vector3 right = crossProduct(cam_dir, UP);
@@ -123,9 +122,9 @@ __kernel void rayTrace (
     float theta = getAngle(vd_ray, UP);
 
     if (theta > 0.5){
-        color_value_buffer = (sky_color_color2 * (2*theta - 1)) + (sky_color_color1 * (2- 2*theta));
+        pixel[pos].color_value_buffer = (sky_color_color2 * (2*theta - 1)) + (sky_color_color1 * (2- 2*theta));
     } else {
-        color_value_buffer = (sky_color_color3 * (1- 2*theta)) + (sky_color_color1 * (2*theta));
+        pixel[pos].color_value_buffer = (sky_color_color3 * (1- 2*theta)) + (sky_color_color1 * (2*theta));
     }
     
 
@@ -133,55 +132,55 @@ __kernel void rayTrace (
     for(i = 0; i<nb_triangle; i++) {
         //get collision with triangle
         Point3 global_pos;Vector3 local_pos;Vector3 normal;float dist;
-        int hit = getCollisionRayTriangle(triangles[i], ray, z_value_buffer, &global_pos, &local_pos, &normal, &dist);
+        int hit = getCollisionRayTriangle(triangles[i], ray, pixel[pos].z_value_buffer, &global_pos, &local_pos, &normal, &dist);
          
            
         //update z_buffer
         rgb color = getColor(textures[i], texture_map, local_pos.x, local_pos.y);
         if (hit && !(color.x == 1 && color.y == 0 && color.z == 1)) {
-            obj_buffer = i;
-            z_value_buffer = dist;
-            normal_buffer = normal;
-            point_buffer = global_pos;
-            color_value_buffer = color;
+            pixel[pos].obj_buffer = i;
+            pixel[pos].z_value_buffer = dist;
+            pixel[pos].normal_buffer = normal;
+            pixel[pos].point_buffer = global_pos;
+            pixel[pos].color_value_buffer = color;
         }
     }
     
     /*********** hard shadows ***********/
-    rgb direct_light_buffer = sky_illum_color0;
-    if (obj_buffer != -1) {
-        Ray3 r = (Ray3) {.p=point_buffer, .v=-sky_light_dir};
+    pixel[pos].direct_light_buffer = sky_illum_color0;
+    if (pixel[pos].obj_buffer != -1) {
+        Ray3 r = (Ray3) {.p=pixel[pos].point_buffer, .v=-sky_light_dir};
         
         for(i = 0; i<nb_triangle; i++) {
             Point3 global_pos;Vector3 local_pos;Vector3 normal;float dist;
             int hit = getCollisionRayTriangle(triangles[i], r, FLT_MAX, &global_pos, &local_pos, &normal, &dist);
             
             if (hit) {
-                direct_light_buffer = (direct_light_buffer * 0);
+                pixel[pos].direct_light_buffer = (pixel[pos].direct_light_buffer * 0);
                 break;
             }
         }
-        float angle = getAngle(normal_buffer, -sky_light_dir);
-        direct_light_buffer = (direct_light_buffer * (angle<0.5 ? (1-angle*2):0));
+        float angle = getAngle(pixel[pos].normal_buffer, -sky_light_dir);
+        pixel[pos].direct_light_buffer = (pixel[pos].direct_light_buffer * (angle<0.5 ? (1-angle*2):0));
     }
 
     /*********** EEAO ***********/
     int hit_count = 0;
     int cast_count = 1;
     
-    if (obj_buffer != -1) {
+    if (pixel[pos].obj_buffer != -1) {
         Vector3 v1;
         cast_count = 0;
-        if (!isColinear(normal_buffer, UP)) {
-            v1 = getNorm2(normal_buffer, UP);
+        if (!isColinear(pixel[pos].normal_buffer, UP)) {
+            v1 = getNorm2(pixel[pos].normal_buffer, UP);
         } else {
-            v1 = getNorm2(normal_buffer, RIGHT);
+            v1 = getNorm2(pixel[pos].normal_buffer, RIGHT);
         }
 
         for (cast_count; cast_count <=15; cast_count++) {
-            Vector3 new_vd_ray = rotateAround(normal_buffer, v1, random_float(x*y_res + y, &random) * PI/2);
-            new_vd_ray = rotateAround(new_vd_ray, normal_buffer, random_float(x*y_res + y, &random) * 2 * PI);
-            Ray3 new_ray = (Ray3){.p=point_buffer, .v=new_vd_ray};
+            Vector3 new_vd_ray = rotateAround(pixel[pos].normal_buffer, v1, random_float(pos, &random) * PI/2);
+            new_vd_ray = rotateAround(new_vd_ray, pixel[pos].normal_buffer, random_float(pos, &random) * 2 * PI);
+            Ray3 new_ray = (Ray3){.p=pixel[pos].point_buffer, .v=new_vd_ray};
 
             Point3 global_pos;Vector3 local_pos, normal;float dist;float max_z = 1.5;
             for(i = 0; i<nb_triangle; i++) {
@@ -195,7 +194,7 @@ __kernel void rayTrace (
     }
 
     /*********** Build up final render ***********/
-    rgb c = color_value_buffer * (1- ((float)hit_count/cast_count)) * sky_illum_color0 * ((1-0.5f) + direct_light_buffer*0.5f);
+    rgb c = pixel[pos].color_value_buffer * (1- ((float)hit_count/cast_count)) * sky_illum_color0 * ((1-0.5f) + pixel[pos].direct_light_buffer*0.5f);
 
     uint4 color = (uint4)(
         c.x*255, 

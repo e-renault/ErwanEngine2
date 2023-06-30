@@ -62,7 +62,7 @@ typedef struct __attribute__ ((packed)) Sphere3 {
   EE_FLOAT radius;
 } Sphere3;
 
-//useless datas ?
+//TODO: useless datas ?
 typedef struct __attribute__ ((packed)) Triangle3 {
   Point3 p[3];//useless ?
   Vector3 v[2];//useless ?
@@ -78,14 +78,27 @@ typedef struct __attribute__ ((packed)) Texture {
     EE_FLOAT2 voff;
 } Texture;
 
+//TODO: refactor ?
 typedef struct __attribute__ ((packed)) Material {
-    char newmtl[200];
-    EE_INT newmtl_index;
+    char newmtl[200];//useless ?
+    EE_INT newmtl_index; //useless ?
     rgb Ka;
     rgb Ke;
-    Texture map_Ka;
-    EE_INT map_Ka_index;
+    int hasTexture;//useless ?
+    char texture_path[400];//useless ?
+    Texture map_Kd;//useless ?
+    EE_INT map_Kd_index;//useless ?
 } Material;
+
+typedef struct __attribute__ ((packed)) LocalPixelData {
+    rgb color_value_buffer;
+    rgb global_illum_buffer;
+    rgb direct_light_buffer;
+    float z_value_buffer;
+    int obj_buffer;
+    Vector3 normal_buffer;
+    Point3 point_buffer;
+} LocalPixelData;
 
 //TODO: should be deleted ?
 typedef struct __attribute__ ((packed)) LightSource3 {
@@ -94,5 +107,7 @@ typedef struct __attribute__ ((packed)) LightSource3 {
     Point3 source;
     EE_FLOAT luminosity;
 } LightSource3;
+
+
 
 #endif

@@ -172,6 +172,14 @@ int main(int argc, char *argv[]) {
     cl_int real_nb_lights = 0;
     LightSource3* lights = (LightSource3*) calloc(10, sizeof(LightSource3));//TODO: should be removed
 
+
+
+    //TODO make malloc dynamic
+    Material* mtl;
+    //TODO make load not hardcoded
+    load_mtl_file("/media/erenault/EXCHANGE/workspaces/ErwanEngine2/main/src/obj/default2.mtl", &mtl);
+    //exit(0);
+
     char obj_path[1000] = "\0";strcat(obj_path, scene_path);strcat(obj_path, obj_file_name);
     if (DEBUG_GLOBAL_INFO) printf("Loading : %s\n", obj_path);
     status = load_obj_file(
@@ -234,6 +242,9 @@ int main(int argc, char *argv[]) {
     cl_mem textures_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nb_triangles * sizeof(Texture), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create texture buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
+    cl_mem pixel_data_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, RES * sizeof(LocalPixelData), NULL, &status);
+    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create texture buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    
     // Create images
     cl_image_format image_format = (cl_image_format) {
         .image_channel_order = CL_RGBA,
@@ -283,7 +294,10 @@ int main(int argc, char *argv[]) {
     status = clSetKernelArg(kernel, ARGUMENT_INDEX_O_BUFFER, sizeof(cl_mem), (void*) &render_image);
     if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set render_image*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
+    status = clSetKernelArg(kernel, ARGUMENT_INDEX_DTA_BUFF, sizeof(cl_mem), (void*) &pixel_data_buffer);
+    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set pixel_data_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
+    
 
 
     int frame = 0, timebase = 0, iteration_counter = 0;//used for FPS counter
