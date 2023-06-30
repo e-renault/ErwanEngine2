@@ -1,5 +1,5 @@
 exec: compile
-	./a.out --XRES 1000 --YRES 800 --FOV 80 --obj default2.obj --texture default_texture.ppm
+	./a.out --XRES 800 --YRES 600 --FOV 80 --obj default2.obj --texture default_texture.ppm
 
 compile:
 	gcc main.c -lm -lOpenCL -lpthread -lGL -lglut

@@ -35,7 +35,7 @@ static const char* ERROR_MSG = "(Error)";
 // frame definition (default)
 static int Y_RES = 600;
 static int X_RES = 800;
-static int RES = 480000;//Y_RES*X_RES
+static int RES = 600 * 800;//Y_RES*X_RES
 static float FOV = 70.0;
 static char scene_path[] = "src/obj/";
 static char texture_path[] = "src/texture/";

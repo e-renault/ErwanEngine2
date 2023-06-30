@@ -8,7 +8,7 @@ Currently in developpement. Some strange behaviours could occure.
 
 **This is an early buggy access**
 
-/!\ The program can lead to a high CPU and GPU T° since it has not be designed to take care of hardware capabilities.
+/!\ The program can lead to a high CPU and GPU T°, sometimes even without moving.
 
 ## Install
 You would probably need to install :
@@ -68,7 +68,6 @@ This is what files you can use using "--obj=" argument. You should also provide 
     `oklm`    -> rotate camera
 
 ### Misk (experimental)
-    `r`    -> auto rotate around point 000
     `t/g`  -> increase/decrease sun x vector property 
     `y/h`  -> increase/decrease sun y vector property
     `u/j`  -> increase/decrease sun z vector property
