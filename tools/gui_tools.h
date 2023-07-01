@@ -42,7 +42,7 @@ void keyboard(unsigned char key, int xmouse, int ymouse) {
         case 'h':sky_light_dir.y -=0.1;scene_changed = 1;break;
         case 'u':sky_light_dir.z +=0.1;scene_changed = 1;break;
         case 'j':sky_light_dir.z -=0.1;scene_changed = 1;break;
-        case 'r':cube_demo = !cube_demo; break;
+        case 'r':enqueueKernel = !enqueueKernel; break;
         case 'x':
             program_running_loop = 0;
             glutLeaveMainLoop();

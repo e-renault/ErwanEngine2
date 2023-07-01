@@ -63,8 +63,8 @@ static Vector3 sky_light_dir;//direction of the sun light
 static int program_running_loop = 1;
 static int scene_changed = 1;
 static int cam_moved = 1;
-static int new_frame = 1;
-static int cube_demo = 0;
+static int new_frame = 0;
+static int enqueueKernel = 1;
 
 // semaphores
 sem_t mutex;
@@ -297,26 +297,16 @@ int main(int argc, char *argv[]) {
     status = clSetKernelArg(kernel, ARGUMENT_INDEX_DTA_BUFF, sizeof(cl_mem), (void*) &pixel_data_buffer);
     if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set pixel_data_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-    
 
-
-    int frame = 0, timebase = 0, iteration_counter = 0;//used for FPS counter
+    int iteration_counter = 0;
+    struct timeval stop, start;
     do {
-        struct timeval stop, start;
         gettimeofday(&start, NULL);
-        if (cube_demo) {
-
-            status = loadMaxwellScene(
-                obj_path,
-                &cam_coordinate,
-                &cam_lookat
-            );
-            cam_moved = 1;
-        }
 
         if (scene_changed) {
             scene_changed = 0;
             cam_moved = 1;
+            enqueueKernel = 1;
             
             
             // STEP 4: Write host data to device buffers
@@ -370,6 +360,8 @@ int main(int argc, char *argv[]) {
 
         if (cam_moved) {
             cam_moved = 0;
+            enqueueKernel = 1;
+            iteration_counter = 0;
 
             status = clSetKernelArg(kernel, ARGUMENT_INDEX_CAM_POS, sizeof(Point3), (void*) &cam_coordinate);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_coordinate\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
@@ -377,14 +369,19 @@ int main(int argc, char *argv[]) {
             status = clSetKernelArg(kernel, ARGUMENT_INDEX_CAM_DIR, sizeof(Vector3), (void*) &cam_lookat);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_lookat\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
             
+            }
+        
+        if (enqueueKernel) {
+            enqueueKernel = 0;
+
             int r = rand();
             status = clSetKernelArg(kernel, ARGUMENT_INDEX_IT_COUNT, sizeof(cl_int), (void*) &r);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_coordinate\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            int iteration_counter = 0;
+            
             status = clSetKernelArg(kernel, ARGUMENT_INDEX_RD_SEED, sizeof(cl_int), (void*) &iteration_counter);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_lookat\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-            
+            iteration_counter++;
+
             // STEP 10: Enqueue the kernel for execution
             if (DEBUG_RUN_INFO)  printf("\nSTEP 10: Enqueue the kernel for execution (new frame)\n");
             fflush(stdout);
@@ -417,12 +414,13 @@ int main(int argc, char *argv[]) {
             clFinish(cmdQueue);
         
             //FPS Counter
-            frame++;
-            if (start.tv_sec > timebase) {
-                if (SHOW_FPS) printf("FPS:%i   \r", frame);fflush(stdout);
-                timebase = start.tv_sec;
-                frame = 0;
-            }
+
+            gettimeofday(&stop, NULL);
+            //TODO: Check time
+            unsigned long int sec = stop.tv_sec - start.tv_sec;
+            unsigned long int milisec = (stop.tv_usec - start.tv_usec)/1000;
+            unsigned long int microsec = (stop.tv_usec - start.tv_usec) %1000;
+            if (SHOW_FPS) printf("SPF:%lus\t%lums\t%luus\t\t\r", sec, milisec, microsec); fflush(stdout);
 
             // STEP 12: Read the output buffer back to the host
             if (DEBUG_RUN_INFO) printf("\nSTEP 12: Read the output buffer back to the host\n");
@@ -440,18 +438,8 @@ int main(int argc, char *argv[]) {
                 NULL
             );//status = clEnqueueReadBuffer(cmdQueue, render_image, CL_TRUE, 0, RES *sizeof(rgb), output_render_buffer, 0, NULL,NULL);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Read results\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
             new_frame = 1;
         }
-
-
-        gettimeofday(&stop, NULL);
-        //TODO: Check time
-        long int sec = stop.tv_sec - start.tv_sec;
-        long int milisec = (stop.tv_usec - start.tv_usec)/1000;
-        long int microsec = (stop.tv_usec - start.tv_usec) %1000;
-        if (DEBUG_RUN_INFO) printf("took %lis %lims %lius\n", sec, milisec, microsec); 
-        
         
         sem_wait(&mutex);
 
