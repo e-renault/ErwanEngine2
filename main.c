@@ -45,7 +45,7 @@ static char normal_map_path[] = "default_normal.ppm";
 
 
 // debug
-static int SHOW_FPS = 0;
+static int DISPLAY_SCENE_INFO = 0;
 static int DEBUG_GLOBAL_INFO = 0;
 static int DEBUG_KERNEL_INFO = 0;
 static int DEBUG_HARDWARE_INFO = 0;
@@ -92,7 +92,7 @@ void extract_params(int argc, char *argv[]) {
             {"FOV",     required_argument, 0,  'f' },
             {"obj",     required_argument, 0,  'o' },
             {"texture", required_argument, 0,  't' },
-            {"FPS",     no_argument,       &SHOW_FPS,  1 },
+            {"XYZ",     no_argument,       &DISPLAY_SCENE_INFO,  1 },
             {"GINFO",   no_argument,       &DEBUG_GLOBAL_INFO,  1 },
             {"KINFO",   no_argument,       &DEBUG_KERNEL_INFO,  1 },
             {"HINFO",   no_argument,       &DEBUG_HARDWARE_INFO,  1 },
@@ -371,8 +371,8 @@ int main(int argc, char *argv[]) {
             
             }
         
-        if (enqueueKernel) {
-            enqueueKernel = 0;
+        while (enqueueKernel) {
+            enqueueKernel--;
 
             int r = rand();
             status = clSetKernelArg(kernel, ARGUMENT_INDEX_IT_COUNT, sizeof(cl_int), (void*) &r);
@@ -413,14 +413,17 @@ int main(int argc, char *argv[]) {
 
             clFinish(cmdQueue);
         
-            //FPS Counter
 
             gettimeofday(&stop, NULL);
             //TODO: Check time
-            unsigned long int sec = stop.tv_sec - start.tv_sec;
-            unsigned long int milisec = (stop.tv_usec - start.tv_usec)/1000;
-            unsigned long int microsec = (stop.tv_usec - start.tv_usec) %1000;
-            if (SHOW_FPS) printf("SPF:%lus\t%lums\t%luus\t\t\r", sec, milisec, microsec); fflush(stdout);
+            long long t_sec = stop.tv_sec - start.tv_sec;
+            long long t_microsec = (stop.tv_usec - start.tv_usec) + 1000000*t_sec;
+            
+            long long sec = t_microsec/1000000;
+            long long milisec = t_microsec%1000000 /1000;
+            long long microsec = t_microsec%1000000 % 1000;
+            
+            printf("SPF: %llus  %llums  %lluus           \r", sec, milisec, microsec); fflush(stdout);
 
             // STEP 12: Read the output buffer back to the host
             if (DEBUG_RUN_INFO) printf("\nSTEP 12: Read the output buffer back to the host\n");

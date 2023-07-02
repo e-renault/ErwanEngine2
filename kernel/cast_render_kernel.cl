@@ -77,8 +77,6 @@ __kernel void rayTrace (
 
 
         ) {
-    int i, j;
-
 
     /*********** Init frame ***********/
     //get frame coordinates
@@ -87,23 +85,21 @@ __kernel void rayTrace (
     int pos = y * x_res + x;
 
     //random
-    unsigned int random=random_seed;
-    
-    
+    unsigned int random=random_seed;//random_int(pos, &random);
 
-    //temp
-    const float CAM_XFOV_RAD = FOV * (PI / 180);
-    float step_x_rad = CAM_XFOV_RAD / x_res;
+
+    if (iteration_count != 0) goto EEAO;//(= Erwan Engine Ambiant Occlusion)
 
     //init local var
     pixel[pos].z_value_buffer = FLT_MAX;
     pixel[pos].obj_buffer = -1;
 
 
-
     /*********** Init cam ***********/
 
     //convert frame location to rotation
+    const float CAM_XFOV_RAD = FOV * (PI / 180);
+    float step_x_rad = CAM_XFOV_RAD / x_res;
     float theta_x = step_x_rad * (x - x_res/2);
     float theta_y = step_x_rad * (y - y_res/2);
 
@@ -129,7 +125,7 @@ __kernel void rayTrace (
     
 
     /*********** 1st cast ***********/
-    for(i = 0; i<nb_triangle; i++) {
+    for(int i = 0; i<nb_triangle; i++) {
         //get collision with triangle
         Point3 global_pos;Vector3 local_pos;Vector3 normal;float dist;
         int hit = getCollisionRayTriangle(triangles[i], ray, pixel[pos].z_value_buffer, &global_pos, &local_pos, &normal, &dist);
@@ -151,7 +147,7 @@ __kernel void rayTrace (
     if (pixel[pos].obj_buffer != -1) {
         Ray3 r = (Ray3) {.p=pixel[pos].point_buffer, .v=-sky_light_dir};
         
-        for(i = 0; i<nb_triangle; i++) {
+        for(int i = 0; i<nb_triangle; i++) {
             Point3 global_pos;Vector3 local_pos;Vector3 normal;float dist;
             int hit = getCollisionRayTriangle(triangles[i], r, FLT_MAX, &global_pos, &local_pos, &normal, &dist);
             
@@ -165,37 +161,45 @@ __kernel void rayTrace (
     }
 
     /*********** EEAO ***********/
-    int hit_count = 0;
-    int cast_count = 1;
-    
+    EEAO:;
     if (pixel[pos].obj_buffer != -1) {
         Vector3 v1;
-        cast_count = 0;
         if (!isColinear(pixel[pos].normal_buffer, UP)) {
             v1 = getNorm2(pixel[pos].normal_buffer, UP);
         } else {
             v1 = getNorm2(pixel[pos].normal_buffer, RIGHT);
         }
 
-        for (cast_count; cast_count <=15; cast_count++) {
+        rgb illum_increment = (rgb) {0, 0, 0, 1};
+        int nb_iteration = 1;
+        for (int cast_count=0; cast_count <nb_iteration; cast_count++) {
             Vector3 new_vd_ray = rotateAround(pixel[pos].normal_buffer, v1, random_float(pos, &random) * PI/2);
             new_vd_ray = rotateAround(new_vd_ray, pixel[pos].normal_buffer, random_float(pos, &random) * 2 * PI);
             Ray3 new_ray = (Ray3){.p=pixel[pos].point_buffer, .v=new_vd_ray};
 
-            Point3 global_pos;Vector3 local_pos, normal;float dist;float max_z = 1.5;
-            for(i = 0; i<nb_triangle; i++) {
-                int hit = getCollisionRayTriangle(triangles[i], new_ray, max_z, &global_pos, &local_pos, &normal, &dist);
+            Point3 global_pos;Vector3 local_pos, normal;float dist;float max_z = 1.5;int hit;
+            for(int i = 0; i<nb_triangle; i++) {
+                hit = getCollisionRayTriangle(triangles[i], new_ray, max_z, &global_pos, &local_pos, &normal, &dist);
                 if (hit) {
-                    hit_count++;
+                    illum_increment += (rgb) {0, 0, 0, 1};
                     break;
                 }
             }
+            if (!hit) {
+                illum_increment += sky_illum_color0;
+            }
         }
+
+        illum_increment = illum_increment/nb_iteration;
+        pixel[pos].global_illum_buffer = (pixel[pos].global_illum_buffer*iteration_count + illum_increment) / (iteration_count+1);
+    } else {
+        pixel[pos].global_illum_buffer = sky_illum_color0;
     }
+    
 
-    /*********** Build up final render ***********/
-    rgb c = pixel[pos].color_value_buffer * (1- ((float)hit_count/cast_count)) * sky_illum_color0 * ((1-0.5f) + pixel[pos].direct_light_buffer*0.5f);
-
+    /*********** Build up final render ***********///
+    rgb c = pixel[pos].color_value_buffer * pixel[pos].global_illum_buffer * ((1-0.5f) + pixel[pos].direct_light_buffer*0.5f);
+    
     uint4 color = (uint4)(
         c.x*255, 
         c.y*255, 

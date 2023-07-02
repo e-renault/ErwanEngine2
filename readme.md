@@ -22,6 +22,9 @@ You would probably need to install :
 
 Depending on you hardware, you could have to change DEVICE_ID and PLATFORM_ID in order to select you GPU (check firsts line of "main.c"). Mine is intel integrated Intel(R) UHD Graphics 620.
 
+## Makefile
+A Makefile is included in the project. It basically just compile and run the program. You may still need to install packages by yourself (see install section)
+
 ## Compile
 You can use the command :
 ```
@@ -42,9 +45,8 @@ optional:
 --YRES  [VERTICAL_RESOLUTION_IN_PX]     (default:600)
 ```
 
-debug (experimental):
+debug (experimental, notes for myself):
 ```
---path  [SCENE_PATH]                    (default:"scene/data/")
 --FPS
 --GINFO
 --KINFO
@@ -54,12 +56,12 @@ debug (experimental):
 
 ## Available scenes
 This is what files you can use using "--obj=" argument. You should also provide the "--texture=" texture
-
- * crate        --obj=crate.obj     --texture=crate.ppm
- * maxwell      --obj=maxwell.obj   --texture=maxwell.ppm
- * minecraft    --obj=minecraft.obj --texture=minecraft.ppm
- * ball         --obj=ball.obj      --texture=ball.ppm
-
+```
+    crate        --obj=crate.obj     --texture=crate.ppm
+    maxwell      --obj=maxwell.obj   --texture=maxwell.ppm
+    minecraft    --obj=minecraft.obj --texture=minecraft.ppm
+    ball         --obj=ball.obj      --texture=ball.ppm
+```
 ## Controls
 ### Camera
     `zqsd`    -> move
@@ -68,6 +70,7 @@ This is what files you can use using "--obj=" argument. You should also provide 
     `oklm`    -> rotate camera
 
 ### Misk (experimental)
+    `r`    -> compute 15 more global illuminations
     `t/g`  -> increase/decrease sun x vector property 
     `y/h`  -> increase/decrease sun y vector property
     `u/j`  -> increase/decrease sun z vector property
