@@ -166,29 +166,27 @@ int main(int argc, char *argv[]) {
     output_render_buffer = (unsigned char*) calloc(RES, sizeof(char) * 4);
     
     cl_int nb_triangles = 0;
+    cl_int nb_objects = 0;
+    cl_int nb_materials = 0;
     Triangle3* triangles;
-    Texture* textures;
+    Texture* texture_uvs;
+    Object* objects;
+    Material* materials;
 
-    cl_int real_nb_lights = 0;
+    cl_int nb_lights = 0;
     LightSource3* lights = (LightSource3*) calloc(10, sizeof(LightSource3));//TODO: should be removed
 
 
-
-    //TODO make malloc dynamic
-    Material* mtl;
-    //TODO make load not hardcoded
-    load_mtl_file("/media/erenault/EXCHANGE/workspaces/ErwanEngine2/main/src/obj/default2.mtl", &mtl);
-    //exit(0);
-
-    char obj_path[1000] = "\0";strcat(obj_path, scene_path);strcat(obj_path, obj_file_name);
-    if (DEBUG_GLOBAL_INFO) printf("Loading : %s\n", obj_path);
+    if (DEBUG_GLOBAL_INFO) printf("Loading : %s\n", obj_file_name);
     status = load_obj_file(
-        obj_path,
-        &nb_triangles, &triangles,
-        &textures
+        scene_path,
+        obj_file_name,
+        &nb_triangles, &triangles, &texture_uvs,
+        &nb_objects, &objects,
+        &nb_materials, &materials
     );
     status = loadSceneContext(
-        &real_nb_lights, lights,
+        &nb_lights, lights,
         &cam_coordinate,&cam_lookat,
         &sky_light_dir
     );
@@ -236,11 +234,17 @@ int main(int argc, char *argv[]) {
     cl_mem triangles_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nb_triangles * sizeof(Triangle3), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create triangle buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
+    cl_mem uv_map_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nb_triangles * sizeof(Texture), NULL, &status);
+    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create texture buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    
+    cl_mem objects_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nb_objects * sizeof(Object), NULL, &status);
+    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create objects buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    
+    cl_mem material_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nb_materials * sizeof(Material), NULL, &status);
+    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create materials buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    
     cl_mem lights_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, RES * sizeof(LightSource3), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create light buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    
-    cl_mem textures_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nb_triangles * sizeof(Texture), NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create texture buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
     cl_mem pixel_data_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, RES * sizeof(LocalPixelData), NULL, &status);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create texture buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
@@ -265,7 +269,7 @@ int main(int argc, char *argv[]) {
         .image_width = texture_map_res_x,
         .image_height = texture_map_res_y
     };
-    cl_mem texture_map_image = clCreateImage(context, CL_MEM_READ_ONLY, &image_format, &texture_image_desc, NULL, &status);
+    cl_mem uv_map_image = clCreateImage(context, CL_MEM_READ_ONLY, &image_format, &texture_image_desc, NULL, &status);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create texture image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
 
@@ -315,15 +319,21 @@ int main(int argc, char *argv[]) {
             status = clEnqueueWriteBuffer(cmdQueue, triangles_buffer, CL_TRUE, 0, nb_triangles * sizeof(Triangle3), triangles, 0, NULL, NULL);
             if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write triangle buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clEnqueueWriteBuffer(cmdQueue, textures_buffer, CL_TRUE, 0, nb_triangles * sizeof(Texture), textures, 0, NULL, NULL);
+            status = clEnqueueWriteBuffer(cmdQueue, uv_map_buffer, CL_TRUE, 0, nb_triangles * sizeof(Texture), texture_uvs, 0, NULL, NULL);
             if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write texture buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clEnqueueWriteBuffer(cmdQueue, lights_buffer, CL_TRUE, 0, real_nb_lights * sizeof(LightSource3), lights, 0, NULL, NULL);
+            status = clEnqueueWriteBuffer(cmdQueue, objects_buffer, CL_TRUE, 0, nb_objects * sizeof(Object), objects, 0, NULL, NULL);
+            if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write object buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+            status = clEnqueueWriteBuffer(cmdQueue, material_buffer, CL_TRUE, 0, nb_materials * sizeof(Material), materials, 0, NULL, NULL);
+            if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write material buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+            status = clEnqueueWriteBuffer(cmdQueue, lights_buffer, CL_TRUE, 0, nb_lights * sizeof(LightSource3), lights, 0, NULL, NULL);
             if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write light buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
             size_t origin[3] = {0, 0, 0};
             size_t texture_region[3] = {texture_map_res_x, texture_map_res_y, 1};
-            status = clEnqueueWriteImage(cmdQueue, texture_map_image, CL_TRUE, origin, texture_region, 0, 0, texture_map, 0, NULL, NULL);
+            status = clEnqueueWriteImage(cmdQueue, uv_map_image, CL_TRUE, origin, texture_region, 0, 0, texture_map, 0, NULL, NULL);
             if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write texture image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
         
             size_t normal_region[3] = {normal_map_res_x, normal_map_res_y, 1};
@@ -338,11 +348,23 @@ int main(int argc, char *argv[]) {
             status = clSetKernelArg(kernel, ARGUMENT_INDEX_TRIS, sizeof(cl_mem), (void*) &triangles_buffer);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set triangles_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_MATERIAL, sizeof(cl_mem), (void*) &textures_buffer);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set textures_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_UV_MAP, sizeof(cl_mem), (void*) &uv_map_buffer);
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set uv_map_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_NB_LIGHT, sizeof(cl_int), (void*) &real_nb_lights);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set real_nb_lights\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_NB_OBJ, sizeof(cl_int), (void*) &nb_objects);
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set nb_objects*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_OBJECT, sizeof(cl_mem), (void*) &objects_buffer);
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set objects_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_NB_MAT, sizeof(cl_int), (void*) &nb_materials);
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set nb_materials*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_MATERIAL, sizeof(cl_mem), (void*) &material_buffer);
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set material_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_NB_LIGHT, sizeof(cl_int), (void*) &nb_lights);
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set nb_lights\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
             status = clSetKernelArg(kernel, ARGUMENT_INDEX_LIGHTS, sizeof(cl_mem), (void*) &lights_buffer);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set lights_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
@@ -350,8 +372,8 @@ int main(int argc, char *argv[]) {
             status = clSetKernelArg(kernel, ARGUMENT_INDEX_SKY_DIR, sizeof(Vector3), (void*) &sky_light_dir);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set sky_light_dir\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_TXT_M, sizeof(cl_mem), (void*) &texture_map_image);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set texture_map_image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            status = clSetKernelArg(kernel, ARGUMENT_INDEX_TXT_M, sizeof(cl_mem), (void*) &uv_map_image);
+            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set uv_map_image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
 
             status = clSetKernelArg(kernel, ARGUMENT_INDEX_NML_M, sizeof(cl_mem), (void*) &normal_map_image);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set normal_map_image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
@@ -457,11 +479,11 @@ int main(int argc, char *argv[]) {
     clReleaseMemObject(triangles_buffer);
     clReleaseMemObject(render_image);
     clReleaseMemObject(lights_buffer);
-    clReleaseMemObject(textures_buffer);
+    clReleaseMemObject(uv_map_buffer);
 
     // Free host resources
     free(triangles);
-    free(textures);
+    free(texture_uvs);
     free(lights);
     free(output_render_buffer);
     free(texture_map);

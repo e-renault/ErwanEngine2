@@ -57,10 +57,10 @@ debug (experimental, notes for myself):
 ## Available scenes
 This is what files you can use using "--obj=" argument. You should also provide the "--texture=" texture
 ```
-    crate        --obj=crate.obj     --texture=crate.ppm
-    maxwell      --obj=maxwell.obj   --texture=maxwell.ppm
-    minecraft    --obj=minecraft.obj --texture=minecraft.ppm
-    ball         --obj=ball.obj      --texture=ball.ppm
+crate        --obj=crate.obj     --texture=crate.ppm
+maxwell      --obj=maxwell.obj   --texture=maxwell.ppm
+minecraft    --obj=minecraft.obj --texture=minecraft.ppm
+ball         --obj=ball.obj      --texture=ball.ppm
 ```
 ## Controls
 ### Camera

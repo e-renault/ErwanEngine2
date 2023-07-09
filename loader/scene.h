@@ -13,7 +13,9 @@
 
 
 int load_mtl_file(
-        char* path,
+        char* mlt_path,
+        char* mlt_file_name,
+        int* nb_material,
         Material** materials
     ) {
 
@@ -22,39 +24,44 @@ int load_mtl_file(
     char* line = NULL;
     char* rest;
     char* identifier;
+    char file_path[1000] = "\0";strcat(file_path, mlt_path);strcat(file_path, mlt_file_name);
 
-    fptr = fopen(path,"r");
+    fptr = fopen(file_path,"r");
     if (fptr == NULL) {
-        printf(" ##### /!\\ Obj file not found ! /!\\ #####  (path: %s)\n", path);
+        printf(" ##### /!\\ Mlt file not found ! /!\\ #####  (path: %s)\n", file_path);
         return 0;
     }
-    printf("Loading file : %s \n", path);
+    printf("Loading mlt file : %s \n", mlt_file_name);
 
-    int material_index = 0;
+    *nb_material = 0;
+    int material_current_index = 0;
     *materials = malloc(sizeof(Material) * 30);
+    //TODO make malloc dynamic
+    //TODO make load not hardcoded
 
     while ((len2 = getline(&line, &len1, fptr)) != -1) {
         EE_FLOAT r, g, b;
         if (line[0] == '\n') {
         } else if (line[0] == '#') {
         } else if (strncmp(line, "newmtl", 6) == 0) {
-            material_index++;
-            strncpy((*materials)[material_index].newmtl, line + 6, 200);
-            (*materials)[material_index].newmtl[strlen((*materials)[material_index].newmtl) -1] = '\0';
-            //printf("Material: %s\n", (*materials)[material_index].newmtl);
+            material_current_index = *(nb_material);
+            (*nb_material)++;
+            strncpy((*materials)[material_current_index].name, line + 6, 200);
+            (*materials)[material_current_index].name[strlen((*materials)[material_current_index].name) -1] = '\0';
+            //printf("Material: %s\n", (*materials)[material_current_index].name);
         } else if (strncmp(line, "Kd", 2) == 0) {
             sscanf(line, "Kd %f %f %f", &r, &g, &b);
-            (*materials)[material_index].Ka = (rgb) {r, g, b, 1};
+            (*materials)[material_current_index].Kd = (rgb) {r, g, b, 1};
             //printf("Color base: %f %f %f\n", r, g, b);
         } else if (strncmp(line, "Ke", 2) == 0) {
             sscanf(line, "Ke %f %f %f", &r, &g, &b);
-            (*materials)[material_index].Ke = (rgb) {r, g, b, 1};
+            (*materials)[material_current_index].Ke = (rgb) {r, g, b, 1};
             //printf("Color emmision: %f %f% f\n", r, g, b);
         } else if (strncmp(line, "map_Kd", 6) == 0) {
-            strncpy((*materials)[material_index].texture_path, line + 6, 200);
-            (*materials)[material_index].texture_path[strlen((*materials)[material_index].texture_path) -1] = '\0';
-            (*materials)[material_index].hasTexture = 1;
-            //printf("Texture: %s\n", (*materials)[material_index].texture_path);
+            strncpy((*materials)[material_current_index].texture_path, line + 6, 200);
+            (*materials)[material_current_index].texture_path[strlen((*materials)[material_current_index].texture_path) -1] = '\0';
+            (*materials)[material_current_index].hasTexture = 1;
+            //printf("Material (%i) has texture: %s\n", material_current_index, (*materials)[material_current_index].texture_path);
         } else if (strncmp(line, "Ns", 2) == 0) {
         } else if (strncmp(line, "Ka", 2) == 0) {
         } else if (strncmp(line, "Ks", 2) == 0) {
@@ -62,12 +69,12 @@ int load_mtl_file(
         } else if (strncmp(line, "illum", 5) == 0) {
         } else if (strncmp(line, "d ", 2) == 0) {
         } else {
-            printf("Unkown parameter [%.*s]\n", (int) len2-1, line);
+            //printf("Unkown parameter [%.*s]\n", (int) len2-1, line);
         }
         //TODO malloc materials size
     }
 
-    printf("loaded : %s -> %i materials\n", path, material_index);
+    printf("loaded : %s -> %i materials\n", mlt_file_name, *nb_material);
 
     fclose(fptr);
     if (line)
@@ -77,10 +84,11 @@ int load_mtl_file(
 }
 
 int load_obj_file(
-        char* path,
-        int* triangle_index,
-        Triangle3** triangles,
-        Texture** textures
+        char* obj_path,
+        char* obj_file_name,
+        int* triangle_index, Triangle3** triangles,Texture** texture_uv,
+        int* object_index, Object** objects,
+        int* material_index, Material** materials
     ) {
 
     FILE *fptr;
@@ -89,12 +97,14 @@ int load_obj_file(
     char* rest;
     char* identifier;
 
-    fptr = fopen(path,"r");
+    char file_path[1000] = "\0";strcat(file_path, obj_path);strcat(file_path, obj_file_name);
+
+    fptr = fopen(file_path,"r");
     if (fptr == NULL) {
-        printf(" ##### /!\\ Obj file not found ! /!\\ #####  (path: %s)\n", path);
+        printf(" ##### /!\\ Obj file not found ! /!\\ #####  (path: %s)\n", file_path);
         return 0;
     }
-    printf("Loading file : %s \n", path);
+    printf("Loading obj file : %s \n", obj_file_name);
 
     
 
@@ -104,12 +114,14 @@ int load_obj_file(
 
     int nb_triangle_size = 512;
     int nb_texture_size = 512;
+    int nb_object_size = 8;
     int point_buffer_size = 512;
     int texture_buffer_size = 512;
     int normal_buffer_size = 512;
     
     *triangles      = (Triangle3*)  malloc(nb_triangle_size     * sizeof(Triangle3));
-    *textures       = (Texture*)    malloc(nb_texture_size      * sizeof(Texture));
+    *texture_uv     = (Texture*)    malloc(nb_texture_size      * sizeof(Texture));
+    *objects        = (Object*)     malloc(nb_object_size       * sizeof(Object));
     point_buffer    = (Point3*)     malloc(point_buffer_size    * sizeof(Point3));
     texture_buffer  = (EE_FLOAT2*)  malloc(texture_buffer_size  * sizeof(EE_FLOAT2));
     normal_buffer   = (EE_FLOAT3*)  malloc(normal_buffer_size   * sizeof(EE_FLOAT3));
@@ -117,9 +129,9 @@ int load_obj_file(
     texture_buffer[0] = (EE_FLOAT2) {(0,0)};//set index 0 for undefined and array shift
     normal_buffer[0] = (EE_FLOAT3) {(0,0,0)};//set index 0 for undefined and array shift
 
-
     *triangle_index = 0;
-    int texture_index = 0;
+    *object_index = 0;
+    int texture_uv_index = 0;
     int point_index = 0;
     int texture_coo_index = 1;
     int normal_index = 1;
@@ -130,11 +142,28 @@ int load_obj_file(
         case '#':break;
         case '\n':break;
         case 'o':
-            //TODO
+            //(*objects)[*object_index]->mat = 0;
+            (*objects)[*object_index].t_buffer_start = *triangle_index;
+            if (*object_index>0) (*objects)[*object_index-1].t_buffer_end = *triangle_index -1;
+            (*object_index)++;
+            //printf("object (%i) -> start:%i,  end:%i\n", (*object_index-2), (*objects)[*object_index-2].t_buffer_start, (*objects)[*object_index-2].t_buffer_end);
             break;
         case 'm':
             if (strncmp(line, "mtllib", 6) == 0) {
-                //TODO
+                char path[400];
+                strncpy(path, line + 7, 400);
+                path[strlen(path) -1] = '\0';
+                load_mtl_file(obj_path, path, material_index, materials);
+            } else {
+                printf("Unkown parameter [%.*s]\n", (int) len2-1, line);
+            }
+            break;
+        case 'u':
+            if (strncmp(line, "usemtl", 6) == 0) {
+                char material_name[200];
+                strncpy(material_name, line + 7, 200);
+                material_name[strlen(material_name) -1] = '\0';
+                (*objects)[*object_index].material_index = *object_index;//TODO get real ID
             } else {
                 printf("Unkown parameter [%.*s]\n", (int) len2-1, line);
             }
@@ -175,7 +204,7 @@ int load_obj_file(
             EE_FLOAT2 vty = {texture_buffer[vt1].x-voff.x, texture_buffer[vt1].y-voff.y};
             EE_FLOAT2 vtx = {texture_buffer[vt3].x-voff.x, texture_buffer[vt3].y-voff.y};
         
-            (*textures)[texture_index++] = (Texture) {.v1=vtx,.v2=vty,.voff=voff};
+            (*texture_uv)[texture_uv_index++] = (Texture) {.v1=vtx,.v2=vty,.voff=voff};
             (*triangles)[(*triangle_index)++] = newTriangle3(point_buffer[v2-1], point_buffer[v3-1], point_buffer[v1-1]);
             break;
         case 's':break;
@@ -190,10 +219,16 @@ int load_obj_file(
             printf("#info: increase triangle buffer by *2 (%i)\n", nb_triangle_size);
         }
         
-        if (texture_index >= nb_texture_size) {
+        if (texture_uv_index >= nb_texture_size) {
             nb_texture_size*=2;
-            *textures = (Texture*) realloc(*textures, nb_texture_size * sizeof(Texture));
+            *texture_uv = (Texture*) realloc(*texture_uv, nb_texture_size * sizeof(Texture));
             printf("#info: increase texture buffer by *2 (%i)\n", nb_texture_size);
+        }
+
+        if (*object_index >= nb_object_size) {
+            nb_object_size*=2;
+            *objects = (Object*) realloc(*objects, nb_object_size * sizeof(Object));
+            printf("#info: increase object buffer by *2 (%i)\n", nb_object_size);
         }
 
         if (point_index >= point_buffer_size) {
@@ -214,8 +249,11 @@ int load_obj_file(
             printf("#info: increase normale buffer by *2 (%i)\n", normal_buffer_size);
         }
     }
+    (*objects)[*object_index-1].t_buffer_end = *triangle_index -1;
+    //printf("object (%i) -> start:%i,  end:%i\n", (*object_index-1), (*objects)[*object_index-1].t_buffer_start, (*objects)[*object_index-1].t_buffer_end);
+            
 
-    printf("loaded : %s -> triangles : %i, points : %i, color : %i\n", path, *triangle_index, point_index, texture_coo_index);
+    printf("loaded : %s -> triangles : %i, points : %i, color : %i\n", obj_file_name, *triangle_index, point_index, texture_coo_index);
 
     fclose(fptr);
     if (line)
@@ -233,7 +271,7 @@ int loadSceneContext(
         Vector3* sky_light_dir
     ) {
 
-    *cam_coordinate = (Point3) {0.5, 0.5, 2.0};
+    *cam_coordinate = (Point3) {0, 0, 2.0};
     *cam_lookat = (Vector3) {0, 0, -1};
 
     *nb_lights = 0;
@@ -268,7 +306,7 @@ int loadCubeScene(
         char* path,  
         int* nb_triangle,
         Triangle3* triangles,
-        Texture* textures,
+        Texture* texture_uv,
         int* nb_lights,
         LightSource3* lights,
         Point3* cam_coordinate,
@@ -326,7 +364,7 @@ int loadCubeScene(
     EE_FLOAT2 vty = {0.5, 0};
     EE_FLOAT2 vtx = {0, 0.5};
     for (;i--;) {
-        textures[i] = (Texture) {
+        texture_uv[i] = (Texture) {
             .v1=vtx,.v2=vty,.voff=voff
         };
     }
