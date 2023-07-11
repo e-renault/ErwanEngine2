@@ -35,9 +35,9 @@ int load_mtl_file(
 
     *nb_material = 0;
     int material_current_index = 0;
-    *materials = malloc(sizeof(Material) * 30);
-    //TODO make malloc dynamic
-    //TODO make load not hardcoded
+
+    int nb_material_size = 4;
+    *materials = malloc(sizeof(Material) * nb_material_size);
 
     while ((len2 = getline(&line, &len1, fptr)) != -1) {
         EE_FLOAT r, g, b;
@@ -71,7 +71,13 @@ int load_mtl_file(
         } else {
             //printf("Unkown parameter [%.*s]\n", (int) len2-1, line);
         }
-        //TODO malloc materials size
+        
+
+        if (*nb_material >= nb_material_size) {
+            nb_material_size*=2;
+            *materials = (Material*) realloc(*materials, nb_material_size * sizeof(Material));
+            printf("#info: increase material buffer by *2 (%i)\n", nb_material_size);
+        }
     }
 
     printf("loaded : %s -> %i materials\n", mlt_file_name, *nb_material);
@@ -128,6 +134,13 @@ int load_obj_file(
 
     texture_buffer[0] = (EE_FLOAT2) {(0,0)};//set index 0 for undefined and array shift
     normal_buffer[0] = (EE_FLOAT3) {(0,0,0)};//set index 0 for undefined and array shift
+    *material_index = 1;
+    *materials = (Material*) malloc(*material_index * sizeof(Material));
+    (*materials)[0] = (Material) {
+        .Kd = (rgb) {1, 1, 1, 1},
+        .Ke = (rgb) {0, 0, 0, 1},
+        .hasTexture = 1
+    };
 
     *triangle_index = 0;
     *object_index = 0;
@@ -141,7 +154,7 @@ int load_obj_file(
         switch (line[0]) {
         case '#':break;
         case '\n':break;
-        case 'o':
+        case 'o':case 'g':
             //(*objects)[*object_index]->mat = 0;
             (*objects)[*object_index].t_buffer_start = *triangle_index;
             if (*object_index>0) (*objects)[*object_index-1].t_buffer_end = *triangle_index -1;
@@ -250,8 +263,7 @@ int load_obj_file(
         }
     }
     (*objects)[*object_index-1].t_buffer_end = *triangle_index -1;
-    //printf("object (%i) -> start:%i,  end:%i\n", (*object_index-1), (*objects)[*object_index-1].t_buffer_start, (*objects)[*object_index-1].t_buffer_end);
-            
+           
 
     printf("loaded : %s -> triangles : %i, points : %i, color : %i\n", obj_file_name, *triangle_index, point_index, texture_coo_index);
 
@@ -271,8 +283,11 @@ int loadSceneContext(
         Vector3* sky_light_dir
     ) {
 
-    *cam_coordinate = (Point3) {0, 0, 2.0};
-    *cam_lookat = (Vector3) {0, 0, -1};
+    *cam_coordinate = (Point3) {-0.317921, 0.000000, 1.266605};
+    *cam_lookat = (Vector3) {0.295520, 0.000000, -0.955337};
+    //*cam_coordinate = (Point3) {0, 0, 2.0};
+    //*cam_lookat = (Vector3) {0, 0, -1};
+    *sky_light_dir = (Vector3) {-0.7, -1, -0.5};
 
     *nb_lights = 0;
     lights[(*nb_lights)++] = (LightSource3) {
@@ -293,8 +308,6 @@ int loadSceneContext(
         .source = (Point3) {-7,2,3},
         .luminosity = 12
     };
-    
-    *sky_light_dir = (Vector3) {-0.7, -1, -0.5};
 
     return 1;
 }
@@ -414,7 +427,7 @@ int loadMaxwellScene(
     *cam_coordinate = (Point3) {sin_alpha*10, 3, cos_alpha*10};
     *cam_lookat = getNorm((Vector3) {-cam_coordinate->x, -cam_coordinate->y, -cam_coordinate->z});
     
-    return 0;
+    return 1;
 }
 
 #endif //SCENE_LOADER_H_

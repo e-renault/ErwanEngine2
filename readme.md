@@ -2,7 +2,7 @@
 Hello there =) 
 Here is my second version of the ErwanEngine, implemented in C using opencl to implement a 3D engine. It has been developped from scratch without  tutorial. 
 
-![preview](https://github.com/e-renault/ErwanEngine2/blob/main/_output/cheval_hd_light_dark.png?raw=true)
+![preview](https://github.com/e-renault/ErwanEngine2/blob/main/_output/EEAO_test6.png?raw=true)
 
 Currently in developpement. Some strange behaviours could occure.
 

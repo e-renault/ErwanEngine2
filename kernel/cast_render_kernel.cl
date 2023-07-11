@@ -46,6 +46,25 @@
     }
 } **/
 
+rgb max_rgb(rgb c1, rgb c2);
+rgb max_rgb(rgb c1, rgb c2) {
+    rgb ret = (rgb) {
+        fmax(c1.x, c2.x),
+        fmax(c1.y, c2.y),
+        fmax(c1.z, c2.z),
+        fmax(c1.w, c2.w)
+    };
+    return ret;
+}
+
+int coord(int x, int y, int x_res, int y_res) {
+    x = x < 0 ? -x : x;
+    y = y < 0 ? -y : y;
+    x = x > x_res ? x_res-(x%x_res) : x;
+    y = y > y_res ? y_res-(y%y_res) : y;
+    return y * x_res + x;
+}
+
 __constant rgb sky_illum_color0 = (rgb) {1,     1,     1,      1};
 __constant rgb sky_color_color1 = (rgb) {0.58,  0.78,  0.92,   1} * sky_illum_color0;
 __constant rgb sky_color_color2 = (rgb) {1.3,   1.3,   1.3,    1} * sky_illum_color0;
@@ -84,6 +103,7 @@ __kernel void rayTrace (
     int x = get_global_id(0);
     int y = get_global_id(1);
     int pos = y * x_res + x;
+    int mid = y_res/2 * x_res + x_res/2;
 
     //random
     unsigned int random=random_seed;//random_int(pos, &random);
@@ -94,6 +114,7 @@ __kernel void rayTrace (
     //init local var
     pixel[pos].z_value_buffer = FLT_MAX;
     pixel[pos].triangle_index = -1;
+    pixel[pos].object_index = -1;
 
 
     /*********** Init cam ***********/
@@ -187,7 +208,10 @@ __kernel void rayTrace (
         int mat_id;
         int nb_iteration = 1;
         for (int cast_count=0; cast_count <nb_iteration; cast_count++) {
-            Vector3 new_vd_ray = rotateAround(pixel[pos].normal_buffer, v1, random_float(pos, &random) * (PI/2));
+            float x = random_float(pos, &random);
+            float a = 0.517f, b=1.1f;
+            float y = pow(x, a*(b-x));
+            Vector3 new_vd_ray = rotateAround(pixel[pos].normal_buffer, v1, y * (PI/2));
             new_vd_ray = rotateAround(new_vd_ray, pixel[pos].normal_buffer, random_float(pos, &random) * 2 * PI);
             Ray3 new_ray = (Ray3){.p=pixel[pos].point_buffer, .v=new_vd_ray};
 
@@ -204,20 +228,44 @@ __kernel void rayTrace (
                 }
             }
             if (hit) {
-                illum_increment += materials[mat_id].Ke * 10;
+                illum_increment += materials[mat_id].Ke *10.0f;
             } else {
-                illum_increment += sky_illum_color0;
+                illum_increment += sky_illum_color0 *1.0f;
             }
         }
-
-        pixel[pos].global_illum_buffer = (pixel[pos].global_illum_buffer*iteration_count + illum_increment/nb_iteration) / (iteration_count+nb_iteration);
+        pixel[pos].global_illum_buffer = (pixel[pos].global_illum_buffer*iteration_count + illum_increment/nb_iteration) / (iteration_count+1);
+        pixel[pos].global_illum_buffer = max_rgb(materials[pixel[pos].material_index].Ke, pixel[pos].global_illum_buffer);
     } else {
         pixel[pos].global_illum_buffer = sky_illum_color0;
     }
-
+    
+    /*********** noise filter ***********///
+    ///*
+    rgb mean = {0,0,0,1};
+    float div = 0;
+    int kernel_size = 10;
+    for (int xc = -kernel_size; xc<=kernel_size; xc++) {
+        for (int yc = -kernel_size; yc<=kernel_size; yc++) {
+            if (pixel[coord(xc +x, yc +y, x_res, y_res)].normal_buffer.x == pixel[pos].normal_buffer.x &&
+            pixel[coord(xc +x, yc +y, x_res, y_res)].normal_buffer.y == pixel[pos].normal_buffer.y &&
+            pixel[coord(xc +x, yc +y, x_res, y_res)].normal_buffer.z == pixel[pos].normal_buffer.z) {
+                float p = pow(1 - sqrt((float) xc*xc + yc*yc) / (kernel_size*kernel_size), 5);
+                div += p;
+                mean += pixel[coord(xc +x, yc +y, x_res, y_res)].global_illum_buffer * p;
+            }
+            
+        }
+    }
+    mean /= div;//*/
+    
     /*********** Build up final render ***********///
-    rgb c = pixel[pos].color_value_buffer * pixel[pos].global_illum_buffer * ((1-0.5f) + pixel[pos].direct_light_buffer*0.5f);
-    //c = pixel[pos].global_illum_buffer;
+    float direct_light_coef = 0.5f;
+    rgb c = pixel[pos].color_value_buffer 
+        * pixel[pos].global_illum_buffer
+        * ((1-direct_light_coef) + pixel[pos].direct_light_buffer*direct_light_coef);
+    c = mean;
+        //* mean
+        //* pixel[pos].global_illum_buffer
     
     uint4 color = (uint4)(
         c.x*255, 
