@@ -52,6 +52,10 @@ static int DEBUG_HARDWARE_INFO = 0;
 static int DEBUG_RUN_INFO = 0;
 
 
+//time control
+struct timeval stop, start;
+
+
 // scene description
 static unsigned char* output_render_buffer;
 static Point3 cam_coordinate;
@@ -303,9 +307,7 @@ int main(int argc, char *argv[]) {
 
 
     int iteration_counter = 0;
-    struct timeval stop, start;
     do {
-        gettimeofday(&start, NULL);
 
         if (scene_changed) {
             scene_changed = 0;
@@ -394,6 +396,7 @@ int main(int argc, char *argv[]) {
             }
         
         while (enqueueKernel) {
+            gettimeofday(&start, NULL);
             enqueueKernel--;
 
             int r = rand();
@@ -434,18 +437,7 @@ int main(int argc, char *argv[]) {
             }
 
             clFinish(cmdQueue);
-        
 
-            gettimeofday(&stop, NULL);
-            //TODO: Check time
-            long long t_sec = stop.tv_sec - start.tv_sec;
-            long long t_microsec = (stop.tv_usec - start.tv_usec) + 1000000*t_sec;
-            
-            long long sec = t_microsec/1000000;
-            long long milisec = t_microsec%1000000 /1000;
-            long long microsec = t_microsec%1000000 % 1000;
-            
-            printf("SPF: %llus  %llums  %lluus           \r", sec, milisec, microsec); fflush(stdout);
 
             // STEP 12: Read the output buffer back to the host
             if (DEBUG_RUN_INFO) printf("\nSTEP 12: Read the output buffer back to the host\n");
@@ -463,7 +455,8 @@ int main(int argc, char *argv[]) {
                 NULL
             );//status = clEnqueueReadBuffer(cmdQueue, render_image, CL_TRUE, 0, RES *sizeof(rgb), output_render_buffer, 0, NULL,NULL);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Read results\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-            new_frame = 1;
+            gettimeofday(&stop, NULL);
+            new_frame++;
         }
         
         sem_wait(&mutex);

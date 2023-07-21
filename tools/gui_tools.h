@@ -7,16 +7,55 @@
 
 
 /**  DISPLAY SECTION  **/
+
+void drawText(const char* text, int x, int y);
+void drawText(const char* text, int x, int y) {
+
+
+    const char* white = text;
+    glRasterPos2f(-0.992f, 0.94f);
+    glColor3f(1.0f, 1.0f, 1.0f);
+    while (*white) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *white);
+        ++white;
+    }
+
+    const char* black = text;
+    glRasterPos2f(-0.992f, 0.86f);
+    glColor3f(0.0f, 0.0f, 0.0f);
+    while (*black) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *black);
+        ++black;
+    }
+}
+
+long long t_microsec;
+
 void display_callback();
 void display_callback(){
+    if (cam_moved) {
+        t_microsec = 0;
+    }
+
     if (new_frame) {
-        new_frame=0;
-        
+        new_frame--;
+
+        glRasterPos2i(-1, -1);
         glClearColor( 0, 0, 0, 1 );
         glClear( GL_COLOR_BUFFER_BIT );
-
-        //draw pixels
         glDrawPixels( X_RES, Y_RES, GL_RGBA, GL_UNSIGNED_BYTE, output_render_buffer );
+
+
+        long long t_sec = stop.tv_sec - start.tv_sec;
+        t_microsec += (stop.tv_usec - start.tv_usec) + 1000000*t_sec;
+        long long sec = t_microsec/1000000;
+        long long milisec = t_microsec%1000000 /1000;
+        long long microsec = t_microsec%1000000 % 1000;
+
+        char FPS[500];
+        sprintf(FPS, "%llus%llums%lluus           \r", sec, milisec, microsec); fflush(stdout);
+
+        drawText(FPS, 0, 0);
         glutSwapBuffers();
     }
     glutPostRedisplay();
@@ -68,6 +107,11 @@ void* start_glut(void *vargp) {
     //init GLUT
     glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
     glutInitWindowSize(X_RES, Y_RES);
+    
+    //glutGameModeString("800x600:32@60");
+    //glutEnterGameMode();
+    //glutFullScreen();
+
     glutCreateWindow("ErwanEngine2.0");
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
