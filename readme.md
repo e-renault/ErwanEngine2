@@ -19,12 +19,11 @@ You would probably need to install :
 * freeglut3
 * opencl
 
-  It may depends on you hardware and configuration, for me it was packages :
+It may depends on you hardware and configuration, for me it was packages :
 ```
-apt install gcc
-apt install freeglut3-dev opencl-headers ocl-icd-opencl-dev
-apt install intel-opencl-icd ndidia-opencl-icd
+apt install gcc freeglut3-dev opencl-headers ocl-icd-opencl-dev intel-opencl-icd ndidia-opencl-icd
 ```
+The lasts two packages is related to you GPU model.
 
 Depending on you hardware, you could have to change DEVICE_ID and PLATFORM_ID in order to select you GPU (check firsts line of "main.c"). Mine is intel integrated Intel(R) UHD Graphics 620.
 

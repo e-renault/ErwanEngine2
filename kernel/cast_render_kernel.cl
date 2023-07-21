@@ -66,9 +66,9 @@ int coord(int x, int y, int x_res, int y_res) {
 }
 
 __constant rgb sky_illum_color0 = (rgb) {1,     1,     1,      1};
-__constant rgb sky_color_color1 = (rgb) {0.58,  0.78,  0.92,   1} * sky_illum_color0;
-__constant rgb sky_color_color2 = (rgb) {1.3,   1.3,   1.3,    1} * sky_illum_color0;
-__constant rgb sky_color_color3 = (rgb) {0,     0,     1,      1} * sky_illum_color0;
+__constant rgb sky_color_color1 = (rgb) {0.58,  0.78,  0.92,   1};// * sky_illum_color0;
+__constant rgb sky_color_color2 = (rgb) {1.3,   1.3,   1.3,    1};// * sky_illum_color0;
+__constant rgb sky_color_color3 = (rgb) {0,     0,     1,      1};// * sky_illum_color0;
 
 __kernel void rayTrace (
         int x_res,
