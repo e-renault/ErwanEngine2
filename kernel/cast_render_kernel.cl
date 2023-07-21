@@ -240,7 +240,7 @@ __kernel void rayTrace (
     }
     
     /*********** noise filter ***********///
-    ///*
+    /*
     rgb mean = {0,0,0,1};
     float div = 0;
     int kernel_size = 10;
@@ -263,7 +263,7 @@ __kernel void rayTrace (
     rgb c = pixel[pos].color_value_buffer 
         * pixel[pos].global_illum_buffer
         * ((1-direct_light_coef) + pixel[pos].direct_light_buffer*direct_light_coef);
-    c = mean;
+    //c = mean;
         //* mean
         //* pixel[pos].global_illum_buffer
     

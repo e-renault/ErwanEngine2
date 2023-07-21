@@ -36,8 +36,8 @@ void save_to_file(unsigned char* image_RGBA, char* location, int X_RES, int Y_RE
 }
 
 
-int load_file(char* location, int* x_size, int* y_size, unsigned char** image_RGBA);
-int load_file(char* location, int* x_size, int* y_size, unsigned char** image_RGBA) {
+int load_file(char* location, int* x_size, int* y_size, int x_offset, int y_offset, unsigned char** image_RGBA);
+int load_file(char* location, int* x_size, int* y_size, int x_offset, int y_offset, unsigned char** image_RGBA) {
     
     FILE* ppmfile = fopen(location, "rb");
     //printf("load file: %s\n", location);

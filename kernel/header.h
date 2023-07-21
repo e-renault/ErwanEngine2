@@ -81,10 +81,10 @@ typedef struct __attribute__ ((packed)) Texture {
 
 //TODO: refactor ?
 typedef struct __attribute__ ((packed)) Material {
-    EE_CHAR name[200];//useless ?
+    EE_CHAR name[200];
     rgb Kd;
     rgb Ke;
-    EE_INT hasTexture;//useless ?
+    EE_INT hasTexture;
     EE_CHAR texture_path[400];//useless ?
     EE_INT map_Kd_index;//useless ?
 } Material;

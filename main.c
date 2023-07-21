@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
         &nb_objects, &objects,
         &nb_materials, &materials
     );
-    status = loadSceneContext(
+    status = load_scene_context(
         &nb_lights, lights,
         &cam_coordinate,&cam_lookat,
         &sky_light_dir
@@ -195,13 +195,13 @@ int main(int argc, char *argv[]) {
     int texture_map_res_x, texture_map_res_y;
     unsigned char* texture_map;
     unsigned char* normal_map;
-    status = load_file(path2, &texture_map_res_x, &texture_map_res_y, &texture_map);
+    status = load_file(path2, &texture_map_res_x, &texture_map_res_y, 0, 0, &texture_map);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Load texture map\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
 
     char path3[1000] = "\0";strcat(path3, texture_path);strcat(path3, normal_map_path);
     int normal_map_res_x, normal_map_res_y;
-    status = load_file(path3, &normal_map_res_x, &normal_map_res_y, &normal_map);
+    status = load_file(path3, &normal_map_res_x, &normal_map_res_y, 0, 0, &normal_map);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Load normal map\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
 

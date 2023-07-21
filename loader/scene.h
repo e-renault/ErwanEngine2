@@ -46,7 +46,7 @@ int load_mtl_file(
         } else if (strncmp(line, "newmtl", 6) == 0) {
             material_current_index = *(nb_material);
             (*nb_material)++;
-            strncpy((*materials)[material_current_index].name, line + 6, 200);
+            strncpy((*materials)[material_current_index].name, line + 7, 200);
             (*materials)[material_current_index].name[strlen((*materials)[material_current_index].name) -1] = '\0';
             //printf("Material: %s\n", (*materials)[material_current_index].name);
         } else if (strncmp(line, "Kd", 2) == 0) {
@@ -58,9 +58,14 @@ int load_mtl_file(
             (*materials)[material_current_index].Ke = (rgb) {r, g, b, 1};
             //printf("Color emmision: %f %f% f\n", r, g, b);
         } else if (strncmp(line, "map_Kd", 6) == 0) {
-            strncpy((*materials)[material_current_index].texture_path, line + 6, 200);
-            (*materials)[material_current_index].texture_path[strlen((*materials)[material_current_index].texture_path) -1] = '\0';
+            char path[200];
+            strncpy(path, line + 6, 200);
+            path[strlen(path) -1] = '\0';
+            strncpy((*materials)[material_current_index].texture_path, path, 200);
             (*materials)[material_current_index].hasTexture = 1;
+            //cl_int status = load_file(path, &normal_map_res_x, &normal_map_res_y, 0, 0, &normal_map);
+            //if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Load normal map\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    
             //printf("Material (%i) has texture: %s\n", material_current_index, (*materials)[material_current_index].texture_path);
         } else if (strncmp(line, "Ns", 2) == 0) {
         } else if (strncmp(line, "Ka", 2) == 0) {
@@ -102,6 +107,7 @@ int load_obj_file(
     char* line = NULL;
     char* rest;
     char* identifier;
+    int i;
 
     char file_path[1000] = "\0";strcat(file_path, obj_path);strcat(file_path, obj_file_name);
 
@@ -173,10 +179,18 @@ int load_obj_file(
             break;
         case 'u':
             if (strncmp(line, "usemtl", 6) == 0) {
-                char material_name[200];
+                cl_char material_name[200];
                 strncpy(material_name, line + 7, 200);
                 material_name[strlen(material_name) -1] = '\0';
-                (*objects)[*object_index].material_index = *object_index;//TODO get real ID
+                (*objects)[*object_index-1].material_index = -1;
+
+                for (i=0; i<*material_index; i++) {
+                    if (strcmp((*materials)[i].name, material_name) == 0) {
+                        //printf("[%s]:[%s] -> %i\n", (*materials)[i].name, material_name, i);
+                        (*objects)[*object_index-1].material_index = i;
+                        break;
+                    }
+                }
             } else {
                 printf("Unkown parameter [%.*s]\n", (int) len2-1, line);
             }
@@ -275,7 +289,7 @@ int load_obj_file(
 }
 
 //TODO: should be rethinked
-int loadSceneContext(
+int load_scene_context(
         int* nb_lights,
         LightSource3* lights,
         Point3* cam_coordinate,
@@ -283,8 +297,8 @@ int loadSceneContext(
         Vector3* sky_light_dir
     ) {
 
-    *cam_coordinate = (Point3) {-0.317921, 0.000000, 1.266605};
-    *cam_lookat = (Vector3) {0.295520, 0.000000, -0.955337};
+    *cam_coordinate = (Point3) {0.427321, 0.000000, 1.283136};
+    *cam_lookat = (Vector3) {-0.469893, -0.198173, -0.860133};
     //*cam_coordinate = (Point3) {0, 0, 2.0};
     //*cam_lookat = (Vector3) {0, 0, -1};
     *sky_light_dir = (Vector3) {-0.7, -1, -0.5};
