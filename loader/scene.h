@@ -63,7 +63,7 @@ int load_mtl_file(
             path[strlen(path) -1] = '\0';
             strncpy((*materials)[material_current_index].texture_path, path, 200);
             (*materials)[material_current_index].hasTexture = 1;
-            //cl_int status = load_file(path, &normal_map_res_x, &normal_map_res_y, 0, 0, &normal_map);
+            //cl_int status = load_image(path, &normal_map_res_x, &normal_map_res_y, 0, 0, &normal_map);
             //if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Load normal map\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
             //printf("Material (%i) has texture: %s\n", material_current_index, (*materials)[material_current_index].texture_path);

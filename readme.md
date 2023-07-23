@@ -9,8 +9,6 @@ Currently in developpement. Some strange behaviours could occure.
 
 **This is an early buggy access**
 
-/!\\ The program can lead to a high CPU and GPU T°, sometimes even without moving.
-
 ## Install
 
 You would probably need to install :
@@ -48,8 +46,8 @@ $ gcc main.c -lm -lOpenCL -lpthread -lGL -lglut
 optional:
 
 ```
---obj  [OBJ_FILE_TO_LOAD]               (default:"default.obj")  <- you should use one of the Availables scenes (see section "Available scenes").
---texture [PPM_FILE_TO_LOAD]            (default:"default_texture.ppm")<- image file should be converted to raw ppm file (P6)
+--path  [SCENE_PATH_TO_LOAD] (default:"src/default/")  <- you should use one of the Availables scenes (see section "Available scenes").
+--obj  [OBJ_FILE_TO_LOAD in SCENE_PATH_TO_LOAD] (default:"default.obj")  <- you should use one of the Availables scenes (see section "Available scenes").
 --FOV   [FIELD_OF_VIEW_IN_DEGREE]       (default:70)
 --XRES  [HORISONTAL_RESOLUTION_IN_PX]   (default:800)
 --YRES  [VERTICAL_RESOLUTION_IN_PX]     (default:600)
@@ -58,7 +56,7 @@ optional:
 debug (experimental, notes for myself):
 
 ```
---FPS
+--XYZ
 --GINFO
 --KINFO
 --HINFO
@@ -67,13 +65,11 @@ debug (experimental, notes for myself):
 
 ## Available scenes
 
-This is what files you can use using "--obj=" argument. You should also provide the "--texture=" texture
+This is what files you can use using "--obj=" argument. You should also provide the "--path=" texture
 
 ```
-crate        --obj=crate.obj     --texture=crate.ppm
-maxwell      --obj=maxwell.obj   --texture=maxwell.ppm
-minecraft    --obj=minecraft.obj --texture=minecraft.ppm
-ball         --obj=ball.obj      --texture=ball.ppm
+default        --obj=default.obj     --path=src/default/
+minecraft      --obj=minecraft.obj   --texture=src/minecraft/
 ```
 
 ## Controls
@@ -90,7 +86,7 @@ ball         --obj=ball.obj      --texture=ball.ppm
 ### Misk (experimental)
 
 ```
-`r`    -> compute 15 more global illuminations
+`r`    -> process render of global illumination
 `t/g`  -> increase/decrease sun x vector property 
 `y/h`  -> increase/decrease sun y vector property
 `u/j`  -> increase/decrease sun z vector property

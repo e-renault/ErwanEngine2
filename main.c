@@ -154,18 +154,17 @@ void extract_params(int argc, char *argv[]) {
 
 
 int main(int argc, char *argv[]) {
+    //init vars
     extract_params(argc, argv);
-    
-    if (DEBUG_GLOBAL_INFO) printf(" ### Starting program, creating datas, starting threads ###\n");
-    
     cl_int status;
     cl_int x, y, i;
     srand(time(NULL));
-
-
-    // load scene components
-    output_render_buffer = (unsigned char*) calloc(RES, sizeof(char) * 4);
     
+
+    if (DEBUG_GLOBAL_INFO) printf(" ### Starting program, creating datas, starting threads ###\n");
+    
+    // init scene vars
+    output_render_buffer = (unsigned char*) calloc(RES, sizeof(char) * 4);
     cl_int nb_triangles = 0;
     cl_int nb_objects = 0;
     cl_int nb_materials = 0;
@@ -173,10 +172,6 @@ int main(int argc, char *argv[]) {
     Texture* texture_uvs;
     Object* objects;
     Material* materials;
-
-    cl_int nb_lights = 0;
-    LightSource3* lights = (LightSource3*) calloc(10, sizeof(LightSource3));//TODO: should be removed
-
 
     if (DEBUG_GLOBAL_INFO) printf("Loading : %s\n", obj_file_name);
     status = load_obj_file(
@@ -186,6 +181,11 @@ int main(int argc, char *argv[]) {
         &nb_objects, &objects,
         &nb_materials, &materials
     );
+
+
+    //TODO: This entiere section is deprecated
+    cl_int nb_lights = 0;
+    LightSource3* lights = (LightSource3*) calloc(10, sizeof(LightSource3));
     status = load_scene_context(
         &nb_lights, lights,
         &cam_coordinate,&cam_lookat,
@@ -194,15 +194,15 @@ int main(int argc, char *argv[]) {
 
     int texture_map_res_x, texture_map_res_y;
     unsigned char* texture_map;
-    status = load_file(default_texture_map_path, &texture_map_res_x, &texture_map_res_y, 0, 0, &texture_map);
+    status = load_image(default_texture_map_path, &texture_map_res_x, &texture_map_res_y, 0, 0, &texture_map);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Load texture map\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
-
     int normal_map_res_x, normal_map_res_y;
     unsigned char* normal_map;
-    status = load_file(default_normal_map_path, &normal_map_res_x, &normal_map_res_y, 0, 0, &normal_map);
+    status = load_image(default_normal_map_path, &normal_map_res_x, &normal_map_res_y, 0, 0, &normal_map);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Load normal map\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    
+    //end deprecated
+
 
 
     // start glut thread
@@ -211,7 +211,7 @@ int main(int argc, char *argv[]) {
     status = pthread_create(&glut_thread_id, NULL, start_glut, NULL);
     if (DEBUG_GLOBAL_INFO) printf("%s Creating GLUT thread\n", (status == 0)? SUCCESS_MSG:(ERROR_MSG));
 
-
+    //setup OPENCL
     cl_platform_id* platforms = init_platform();
 
     cl_uint numDevices = 0;
@@ -242,6 +242,10 @@ int main(int argc, char *argv[]) {
         .image_channel_data_type = CL_UNSIGNED_INT8
     };
     
+
+
+
+    //TODO: This entiere section is deprecated
     cl_image_desc output_image_desc = (cl_image_desc){
         .image_type = CL_MEM_OBJECT_IMAGE2D,
         .image_width = X_RES,
@@ -249,7 +253,6 @@ int main(int argc, char *argv[]) {
     };
     cl_mem render_image = aspectC_clCreateImage(context, CL_MEM_WRITE_ONLY, &image_format, &output_image_desc, NULL, &status);
     
-
     cl_image_desc texture_image_desc = (cl_image_desc){
         .image_type = CL_MEM_OBJECT_IMAGE2D,
         .image_width = texture_map_res_x,
@@ -257,14 +260,15 @@ int main(int argc, char *argv[]) {
     };
     cl_mem uv_map_image = aspectC_clCreateImage(context, CL_MEM_READ_ONLY, &image_format, &texture_image_desc, NULL, &status);
     
-
     cl_image_desc normal_image_desc = (cl_image_desc){
         .image_type = CL_MEM_OBJECT_IMAGE2D,
         .image_width = normal_map_res_x,
         .image_height = normal_map_res_y
     };
     cl_mem normal_map_image = aspectC_clCreateImage(context, CL_MEM_READ_ONLY, &image_format, &normal_image_desc, NULL, &status);
-    
+    //end deprecated
+
+
 
     // init window
     cl_int x_res = X_RES;
@@ -338,8 +342,7 @@ int main(int argc, char *argv[]) {
             iteration_counter++;
 
             // STEP 10: Enqueue the kernel for execution
-            if (DEBUG_RUN_INFO)  printf("\nSTEP 10: Enqueue the kernel for execution (new frame)\n");
-            fflush(stdout);
+            if (DEBUG_RUN_INFO)  printf("\nSTEP 10: Enqueue the kernel for execution (new frame)\n");fflush(stdout);
 
             size_t globalWorkSize[2]={X_RES, Y_RES};
             status = aspectC_clEnqueueNDRangeKernel( cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
@@ -350,19 +353,9 @@ int main(int argc, char *argv[]) {
             // STEP 12: Read the output buffer back to the host
             if (DEBUG_RUN_INFO) printf("\nSTEP 12: Read the output buffer back to the host\n");
             
-            status = clEnqueueReadImage(cmdQueue, 
-                render_image, 
-                CL_TRUE, 
-                (size_t[3]){0, 0, 0},
-                (size_t[3]){X_RES, Y_RES, 1}, 
-                0, 
-                0, 
-                output_render_buffer, 
-                0, 
-                NULL, 
-                NULL
-            );//status = clEnqueueReadBuffer(cmdQueue, render_image, CL_TRUE, 0, RES *sizeof(rgb), output_render_buffer, 0, NULL,NULL);
+            status = clEnqueueReadImage(cmdQueue, render_image, CL_TRUE, (size_t[3]){0, 0, 0},(size_t[3]){X_RES, Y_RES, 1}, 0, 0, output_render_buffer, 0, NULL, NULL);
             if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Read results\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+
             gettimeofday(&stop, NULL);
             new_frame++;
         }
@@ -371,7 +364,7 @@ int main(int argc, char *argv[]) {
 
     } while(program_running_loop);
     
-    save_to_file(output_render_buffer, "_output/output.ppm", X_RES, Y_RES);
+    save_image(output_render_buffer, "_output/output.ppm", X_RES, Y_RES);
 
     // STEP 13: Release OpenCL resources
     if (DEBUG_GLOBAL_INFO) printf("\nSTEP 13: Release OpenCL resources\n");
