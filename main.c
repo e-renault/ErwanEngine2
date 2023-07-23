@@ -18,7 +18,6 @@
 #include <pthread.h>        //obvious
 #include <semaphore.h>      //obvious
 #include <unistd.h>         //semaphore too ? I think.
-  
 
 #include "loader/image.h"
 #include "loader/scene.h"
@@ -27,9 +26,8 @@
 
 
 /*********** Globals variables ***********/
-// constants
-static const char* SUCCESS_MSG = "(Done)";
-static const char* ERROR_MSG = "(Error)";
+#define SUCCESS_MSG "(Done)"
+#define ERROR_MSG "(Error)"
 
 
 // frame definition (default)
@@ -37,12 +35,10 @@ static int Y_RES = 600;
 static int X_RES = 800;
 static int RES = 600 * 800;//Y_RES*X_RES
 static float FOV = 70.0;
-static char scene_path[] = "src/obj/";
-static char texture_path[] = "src/texture/";
+static char scene_path[] = "src/default/";
 static char obj_file_name[] = "default.obj";
-static char texture_map_path[] = "default_texture.ppm";
-static char normal_map_path[] = "default_normal.ppm";
-
+static char default_texture_map_path[] = "src/default/default_texture.ppm";
+static char default_normal_map_path[] = "src/default/default_normal.ppm";
 
 // debug
 static int DISPLAY_SCENE_INFO = 0;
@@ -55,9 +51,10 @@ static int DEBUG_RUN_INFO = 0;
 //time control
 struct timeval stop, start;
 
+//output buffer
+static unsigned char* output_render_buffer;
 
 // scene description
-static unsigned char* output_render_buffer;
 static Point3 cam_coordinate;
 static Vector3 cam_lookat;
 static Vector3 sky_light_dir;//direction of the sun light
@@ -78,6 +75,7 @@ sem_t mutex;
 /*********** Late include ***********/
 #include "tools/opencl_tools.h"
 #include "tools/gui_tools.h"
+#include "tools/aspectc.h"
 
 
 
@@ -95,7 +93,8 @@ void extract_params(int argc, char *argv[]) {
             {"YRES",    required_argument, 0,  'y' },
             {"FOV",     required_argument, 0,  'f' },
             {"obj",     required_argument, 0,  'o' },
-            {"texture", required_argument, 0,  't' },
+            {"path",    required_argument, 0,  'p' },
+
             {"XYZ",     no_argument,       &DISPLAY_SCENE_INFO,  1 },
             {"GINFO",   no_argument,       &DEBUG_GLOBAL_INFO,  1 },
             {"KINFO",   no_argument,       &DEBUG_KERNEL_INFO,  1 },
@@ -114,10 +113,9 @@ void extract_params(int argc, char *argv[]) {
                     printf(" to : %s", optarg);
                 printf("\n");
                 break;
-
-            case 't':
-                strcpy(texture_map_path, optarg);
-                printf("texture_map_path set to '%s'\n", texture_map_path);
+            case 'p':
+                strcpy(scene_path, optarg);
+                printf("scene_path set to '%s'\n", scene_path);
                 break;
             case 'x':
                 X_RES = atoi(optarg);
@@ -153,7 +151,6 @@ void extract_params(int argc, char *argv[]) {
 
     RES = X_RES * Y_RES;
 }
-
 
 
 int main(int argc, char *argv[]) {
@@ -195,17 +192,15 @@ int main(int argc, char *argv[]) {
         &sky_light_dir
     );
 
-    char path2[1000] = "\0";strcat(path2, texture_path);strcat(path2, texture_map_path);
     int texture_map_res_x, texture_map_res_y;
     unsigned char* texture_map;
-    unsigned char* normal_map;
-    status = load_file(path2, &texture_map_res_x, &texture_map_res_y, 0, 0, &texture_map);
+    status = load_file(default_texture_map_path, &texture_map_res_x, &texture_map_res_y, 0, 0, &texture_map);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Load texture map\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
 
-    char path3[1000] = "\0";strcat(path3, texture_path);strcat(path3, normal_map_path);
     int normal_map_res_x, normal_map_res_y;
-    status = load_file(path3, &normal_map_res_x, &normal_map_res_y, 0, 0, &normal_map);
+    unsigned char* normal_map;
+    status = load_file(default_normal_map_path, &normal_map_res_x, &normal_map_res_y, 0, 0, &normal_map);
     if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Load normal map\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     
 
@@ -234,25 +229,13 @@ int main(int argc, char *argv[]) {
     
     // STEP 3: Create device buffers
     if (DEBUG_KERNEL_INFO) printf("\nSTEP 3: Create device buffers\n");
-    
-    cl_mem triangles_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nb_triangles * sizeof(Triangle3), NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create triangle buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    
-    cl_mem uv_map_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nb_triangles * sizeof(Texture), NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create texture buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    
-    cl_mem objects_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nb_objects * sizeof(Object), NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create objects buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    
-    cl_mem material_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, nb_materials * sizeof(Material), NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create materials buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    
-    cl_mem lights_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, RES * sizeof(LightSource3), NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create light buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    
-    cl_mem pixel_data_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, RES * sizeof(LocalPixelData), NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create texture buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    
+    cl_mem triangles_buffer = aspectC_clCreateBuffer(context, CL_MEM_READ_ONLY, nb_triangles * sizeof(Triangle3), NULL, &status);
+    cl_mem uv_map_buffer = aspectC_clCreateBuffer(context, CL_MEM_READ_ONLY, nb_triangles * sizeof(Texture), NULL, &status);
+    cl_mem objects_buffer = aspectC_clCreateBuffer(context, CL_MEM_READ_ONLY, nb_objects * sizeof(Object), NULL, &status);
+    cl_mem material_buffer = aspectC_clCreateBuffer(context, CL_MEM_READ_ONLY, nb_materials * sizeof(Material), NULL, &status);
+    cl_mem lights_buffer = aspectC_clCreateBuffer(context, CL_MEM_READ_ONLY, RES * sizeof(LightSource3), NULL, &status);
+    cl_mem pixel_data_buffer = aspectC_clCreateBuffer(context, CL_MEM_READ_WRITE, RES * sizeof(LocalPixelData), NULL, &status);
+
     // Create images
     cl_image_format image_format = (cl_image_format) {
         .image_channel_order = CL_RGBA,
@@ -264,17 +247,15 @@ int main(int argc, char *argv[]) {
         .image_width = X_RES,
         .image_height = Y_RES,
     };
-    cl_mem render_image = clCreateImage(context, CL_MEM_WRITE_ONLY, &image_format, &output_image_desc, NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create render image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
+    cl_mem render_image = aspectC_clCreateImage(context, CL_MEM_WRITE_ONLY, &image_format, &output_image_desc, NULL, &status);
+    
 
     cl_image_desc texture_image_desc = (cl_image_desc){
         .image_type = CL_MEM_OBJECT_IMAGE2D,
         .image_width = texture_map_res_x,
         .image_height = texture_map_res_y
     };
-    cl_mem uv_map_image = clCreateImage(context, CL_MEM_READ_ONLY, &image_format, &texture_image_desc, NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create texture image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    cl_mem uv_map_image = aspectC_clCreateImage(context, CL_MEM_READ_ONLY, &image_format, &texture_image_desc, NULL, &status);
     
 
     cl_image_desc normal_image_desc = (cl_image_desc){
@@ -282,29 +263,19 @@ int main(int argc, char *argv[]) {
         .image_width = normal_map_res_x,
         .image_height = normal_map_res_y
     };
-    cl_mem normal_map_image = clCreateImage(context, CL_MEM_READ_ONLY, &image_format, &normal_image_desc, NULL, &status);
-    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Create normal image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
+    cl_mem normal_map_image = aspectC_clCreateImage(context, CL_MEM_READ_ONLY, &image_format, &normal_image_desc, NULL, &status);
+    
 
     // init window
     cl_int x_res = X_RES;
-    status = clSetKernelArg(kernel, ARGUMENT_INDEX_X_RES, sizeof(cl_int), (void*) &x_res);
-    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set X_RES\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
     cl_int y_res = Y_RES;
-    status = clSetKernelArg(kernel, ARGUMENT_INDEX_Y_RES, sizeof(cl_int), (void*) &y_res);
-    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set Y_RES\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
     cl_float fov = FOV;
-    status = clSetKernelArg(kernel, ARGUMENT_INDEX_FOV, sizeof(cl_float), (void*) &fov);
-    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set FOV\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+    status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_X_RES, sizeof(cl_int), (void*) &x_res);
+    status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_Y_RES, sizeof(cl_int), (void*) &y_res);
+    status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_FOV, sizeof(cl_float), (void*) &fov);
+    status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_O_BUFFER, sizeof(cl_mem), (void*) &render_image);
+    status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_DTA_BUFF, sizeof(cl_mem), (void*) &pixel_data_buffer);
     
-    status = clSetKernelArg(kernel, ARGUMENT_INDEX_O_BUFFER, sizeof(cl_mem), (void*) &render_image);
-    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set render_image*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-    status = clSetKernelArg(kernel, ARGUMENT_INDEX_DTA_BUFF, sizeof(cl_mem), (void*) &pixel_data_buffer);
-    if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set pixel_data_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
 
     int iteration_counter = 0;
     do {
@@ -318,68 +289,33 @@ int main(int argc, char *argv[]) {
             // STEP 4: Write host data to device buffers
             if (DEBUG_KERNEL_INFO) printf("\nSTEP 4: Write host data to device buffers\n");
             
-            status = clEnqueueWriteBuffer(cmdQueue, triangles_buffer, CL_TRUE, 0, nb_triangles * sizeof(Triangle3), triangles, 0, NULL, NULL);
-            if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write triangle buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clEnqueueWriteBuffer(cmdQueue, uv_map_buffer, CL_TRUE, 0, nb_triangles * sizeof(Texture), texture_uvs, 0, NULL, NULL);
-            if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write texture buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clEnqueueWriteBuffer(cmdQueue, objects_buffer, CL_TRUE, 0, nb_objects * sizeof(Object), objects, 0, NULL, NULL);
-            if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write object buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clEnqueueWriteBuffer(cmdQueue, material_buffer, CL_TRUE, 0, nb_materials * sizeof(Material), materials, 0, NULL, NULL);
-            if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write material buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clEnqueueWriteBuffer(cmdQueue, lights_buffer, CL_TRUE, 0, nb_lights * sizeof(LightSource3), lights, 0, NULL, NULL);
-            if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write light buffer\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
+            status = aspectC_clEnqueueWriteBuffer(cmdQueue, triangles_buffer, CL_TRUE, 0, nb_triangles * sizeof(Triangle3), triangles, 0, NULL, NULL);
+            status = aspectC_clEnqueueWriteBuffer(cmdQueue, uv_map_buffer, CL_TRUE, 0, nb_triangles * sizeof(Texture), texture_uvs, 0, NULL, NULL);
+            status = aspectC_clEnqueueWriteBuffer(cmdQueue, objects_buffer, CL_TRUE, 0, nb_objects * sizeof(Object), objects, 0, NULL, NULL);
+            status = aspectC_clEnqueueWriteBuffer(cmdQueue, material_buffer, CL_TRUE, 0, nb_materials * sizeof(Material), materials, 0, NULL, NULL);
+            status = aspectC_clEnqueueWriteBuffer(cmdQueue, lights_buffer, CL_TRUE, 0, nb_lights * sizeof(LightSource3), lights, 0, NULL, NULL);
+            
             size_t origin[3] = {0, 0, 0};
             size_t texture_region[3] = {texture_map_res_x, texture_map_res_y, 1};
-            status = clEnqueueWriteImage(cmdQueue, uv_map_image, CL_TRUE, origin, texture_region, 0, 0, texture_map, 0, NULL, NULL);
-            if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write texture image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-        
+            status = aspectC_clEnqueueWriteImage(cmdQueue, uv_map_image, CL_TRUE, origin, texture_region, 0, 0, texture_map, 0, NULL, NULL);
+            
             size_t normal_region[3] = {normal_map_res_x, normal_map_res_y, 1};
-            status = clEnqueueWriteImage(cmdQueue, normal_map_image, CL_TRUE, origin, normal_region, 0, 0, normal_map, 0, NULL, NULL);
-            if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Write normal image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-        
+            status = aspectC_clEnqueueWriteImage(cmdQueue, normal_map_image, CL_TRUE, origin, normal_region, 0, 0, normal_map, 0, NULL, NULL);
+            
 
-
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_NB_TRI, sizeof(cl_int), (void*) &nb_triangles);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set real_nb_triangles*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_TRIS, sizeof(cl_mem), (void*) &triangles_buffer);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set triangles_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_UV_MAP, sizeof(cl_mem), (void*) &uv_map_buffer);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set uv_map_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_NB_OBJ, sizeof(cl_int), (void*) &nb_objects);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set nb_objects*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_OBJECT, sizeof(cl_mem), (void*) &objects_buffer);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set objects_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_NB_MAT, sizeof(cl_int), (void*) &nb_materials);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set nb_materials*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_MATERIAL, sizeof(cl_mem), (void*) &material_buffer);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set material_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_NB_LIGHT, sizeof(cl_int), (void*) &nb_lights);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set nb_lights\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_LIGHTS, sizeof(cl_mem), (void*) &lights_buffer);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set lights_buffer*\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_SKY_DIR, sizeof(Vector3), (void*) &sky_light_dir);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set sky_light_dir\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_TXT_M, sizeof(cl_mem), (void*) &uv_map_image);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set uv_map_image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_NML_M, sizeof(cl_mem), (void*) &normal_map_image);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set normal_map_image\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_NB_TRI, sizeof(cl_int), (void*) &nb_triangles);            
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_TRIS, sizeof(cl_mem), (void*) &triangles_buffer);
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_UV_MAP, sizeof(cl_mem), (void*) &uv_map_buffer);
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_NB_OBJ, sizeof(cl_int), (void*) &nb_objects);
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_OBJECT, sizeof(cl_mem), (void*) &objects_buffer);
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_NB_MAT, sizeof(cl_int), (void*) &nb_materials);
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_MATERIAL, sizeof(cl_mem), (void*) &material_buffer);
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_NB_LIGHT, sizeof(cl_int), (void*) &nb_lights);
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_LIGHTS, sizeof(cl_mem), (void*) &lights_buffer);
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_SKY_DIR, sizeof(Vector3), (void*) &sky_light_dir);
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_TXT_M, sizeof(cl_mem), (void*) &uv_map_image);
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_NML_M, sizeof(cl_mem), (void*) &normal_map_image);
+            
         }
 
         if (cam_moved) {
@@ -387,24 +323,18 @@ int main(int argc, char *argv[]) {
             enqueueKernel = 1;
             iteration_counter = 0;
 
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_CAM_POS, sizeof(Point3), (void*) &cam_coordinate);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_coordinate\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_CAM_DIR, sizeof(Vector3), (void*) &cam_lookat);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_lookat\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-            
-            }
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_CAM_POS, sizeof(Point3), (void*) &cam_coordinate);
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_CAM_DIR, sizeof(Vector3), (void*) &cam_lookat);
+        }
         
         while (enqueueKernel) {
             gettimeofday(&start, NULL);
             enqueueKernel--;
 
             int r = rand();
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_IT_COUNT, sizeof(cl_int), (void*) &r);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_coordinate\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_IT_COUNT, sizeof(cl_int), (void*) &r);
+            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_RD_SEED, sizeof(cl_int), (void*) &iteration_counter);
             
-            status = clSetKernelArg(kernel, ARGUMENT_INDEX_RD_SEED, sizeof(cl_int), (void*) &iteration_counter);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Set cam_lookat\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
             iteration_counter++;
 
             // STEP 10: Enqueue the kernel for execution
@@ -412,29 +342,7 @@ int main(int argc, char *argv[]) {
             fflush(stdout);
 
             size_t globalWorkSize[2]={X_RES, Y_RES};
-            status = clEnqueueNDRangeKernel( cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
-
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s call\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-            switch(status) {
-                case CL_INVALID_PROGRAM_EXECUTABLE:printf("CL_INVALID_PROGRAM_EXECUTABLE\n");break;
-                case CL_INVALID_COMMAND_QUEUE:printf("CL_INVALID_COMMAND_QUEUE\n");break;
-                case CL_INVALID_KERNEL:printf("CL_INVALID_KERNEL\n");break;
-                case CL_INVALID_CONTEXT:printf("CL_INVALID_CONTEXT\n");break;
-                case CL_INVALID_KERNEL_ARGS:printf("CL_INVALID_KERNEL_ARGS\n");break;
-                case CL_INVALID_WORK_DIMENSION:printf("CL_INVALID_WORK_DIMENSION\n");break;
-                case CL_INVALID_GLOBAL_WORK_SIZE:printf("CL_INVALID_GLOBAL_WORK_SIZE\n");break;
-                case CL_INVALID_GLOBAL_OFFSET:printf("CL_INVALID_GLOBAL_OFFSET\n");break;
-                case CL_INVALID_WORK_GROUP_SIZE:printf("CL_INVALID_WORK_GROUP_SIZE\n");break;
-                case CL_INVALID_WORK_ITEM_SIZE:printf("CL_INVALID_WORK_ITEM_SIZE\n");break;
-                case CL_MISALIGNED_SUB_BUFFER_OFFSET:printf("CL_MISALIGNED_SUB_BUFFER_OFFSET\n");break;
-                case CL_INVALID_IMAGE_SIZE:printf("CL_INVALID_IMAGE_SIZE\n");break;
-                case CL_IMAGE_FORMAT_NOT_SUPPORTED:printf("CL_IMAGE_FORMAT_NOT_SUPPORTED\n");break;
-                case CL_OUT_OF_RESOURCES:printf("CL_OUT_OF_RESOURCES\n");break;
-                case CL_MEM_OBJECT_ALLOCATION_FAILURE:printf("CL_MEM_OBJECT_ALLOCATION_FAILURE\n");break;
-                case CL_INVALID_EVENT_WAIT_LIST:printf("CL_INVALID_EVENT_WAIT_LIST\n");break;
-                case CL_INVALID_OPERATION:printf("CL_INVALID_OPERATION\n");break;
-                case CL_OUT_OF_HOST_MEMORY:printf("CL_OUT_OF_HOST_MEMORY\n");break;
-            }
+            status = aspectC_clEnqueueNDRangeKernel( cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
 
             clFinish(cmdQueue);
 

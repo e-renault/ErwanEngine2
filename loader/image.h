@@ -42,7 +42,10 @@ int load_file(char* location, int* x_size, int* y_size, int x_offset, int y_offs
     FILE* ppmfile = fopen(location, "rb");
     //printf("load file: %s\n", location);
 
-    if (ppmfile == NULL) return 0;
+    if (ppmfile == NULL) {
+        printf("file not found [%s]\n", location);
+        return 0;
+    }
 
     char line[1000];
     char format[10];
@@ -58,8 +61,8 @@ int load_file(char* location, int* x_size, int* y_size, int x_offset, int y_offs
     // Extract xres and yres
     do {fgets(line, sizeof(line), ppmfile);
     } while(line[0] == '#' || line[0] == '\n');
-    sscanf(line, "%d %d", x_size, y_size);
-    //printf("x: %d, y: %d\n", *x_size, *y_size);
+    sscanf(line, "%i %i", x_size, y_size);
+    //printf("x: %i, y: %i\n", *x_size, *y_size);
 
     // Extract maxval (should always be 255)
     do {fgets(line, sizeof(line), ppmfile);
@@ -81,13 +84,14 @@ int load_file(char* location, int* x_size, int* y_size, int x_offset, int y_offs
             }
         }
         fclose(ppmfile);
-        printf("Image loaded [%s] \n", location);
+        printf("Image loaded [%s] [%i, %i]\n", location, *x_size, *y_size);
         return 0;
     } else {
         fclose(ppmfile);
         printf("Unsupported format");
         return 1;
     }
+    printf("Unsupported format [%s] [%s]\n", location, format);
     return 1;
     
 }

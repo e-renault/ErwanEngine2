@@ -8,24 +8,12 @@
 
 /**  DISPLAY SECTION  **/
 
-void drawText(const char* text, int x, int y);
-void drawText(const char* text, int x, int y) {
-
-
-    const char* white = text;
-    glRasterPos2f(-0.992f, 0.94f);
-    glColor3f(1.0f, 1.0f, 1.0f);
-    while (*white) {
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *white);
-        ++white;
-    }
-
-    const char* black = text;
-    glRasterPos2f(-0.992f, 0.86f);
-    glColor3f(0.0f, 0.0f, 0.0f);
-    while (*black) {
-        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *black);
-        ++black;
+void drawText(const char* text, cl_float2 coord, rgb color);
+void drawText(const char* text, cl_float2 coord, rgb color) {
+    glRasterPos2f(coord.x, coord.y);
+    glColor3f(color.x, color.y, color.z);
+    while (*text) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *(text++));
     }
 }
 
@@ -55,7 +43,14 @@ void display_callback(){
         char FPS[500];
         sprintf(FPS, "%llus%llums%lluus           \r", sec, milisec, microsec); fflush(stdout);
 
-        drawText(FPS, 0, 0);
+        cl_float2 coo1 = {-0.992f, 0.86f};
+        rgb dark = (rgb) {0.0f, 0.0f, 0.0f, 1.0f};
+        drawText(FPS, coo1, dark);
+
+        cl_float2 coo2 = {-0.992f, 0.94f};
+        rgb white = (rgb) {1.0f, 1.0f, 1.0f, 1.0f};
+        drawText(FPS, coo2, white);
+
         glutSwapBuffers();
     }
     glutPostRedisplay();
