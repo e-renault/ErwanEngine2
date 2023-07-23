@@ -21,6 +21,17 @@ Ni 1.450000
 d 1.000000
 illum 2
 
+newmtl minecraft_texture
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd default_texture.ppm
+
 newmtl White
 Ns 225.000000
 Ka 1.000000 1.000000 1.000000
@@ -30,6 +41,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
+map_Kd default_normal.ppm
 
 newmtl WhiteLight
 Ns 225.000000
@@ -40,17 +52,6 @@ Ke 6.000000 6.000000 6.000000
 Ni 1.450000
 d 1.000000
 illum 2
-
-newmtl minecraft_texture
-Ns 225.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd /media/erenault/EXCHANGE/workspaces/ErwanEngine2/main/src/texture/default_texture.ppm
 
 newmtl redLight
 Ns 225.000000

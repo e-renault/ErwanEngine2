@@ -77,9 +77,8 @@ __kernel void rayTrace (
 
         __write_only image2d_t final_outut_buffer,
         __read_only image2d_t texture_map,
-        __read_only image2d_t normal_map,
 
-        int nb_triangle, __constant Triangle3* triangles, __constant Texture* uv_map,
+        int nb_triangle, __constant Triangle3* triangles, __constant UV* uv_map,
         int nb_object, __constant Object* objects,
         int nb_material, __constant Material* materials,
 
@@ -159,7 +158,7 @@ __kernel void rayTrace (
             
             //update buffers
             rgb color = materials[material_index].hasTexture ? 
-                getColor(uv_map[i], texture_map, local_pos.x, local_pos.y) 
+                getColor(uv_map[i], materials[material_index], texture_map, local_pos.x, local_pos.y) 
                 : materials[material_index].Kd;
             if (hit && !(color.x == 1 && color.y == 0 && color.z == 1)) {
                 pixel[pos].triangle_index = i;

@@ -37,8 +37,7 @@ static int RES = 600 * 800;//Y_RES*X_RES
 static float FOV = 70.0;
 static char scene_path[] = "src/default/";
 static char obj_file_name[] = "default.obj";
-static char default_texture_map_path[] = "src/default/default_texture.ppm";
-static char default_normal_map_path[] = "src/default/default_normal.ppm";
+static char default_texture_map_name[] = "default_texture.ppm";
 
 // debug
 static int DISPLAY_SCENE_INFO = 0;
@@ -161,7 +160,7 @@ int main(int argc, char *argv[]) {
     srand(time(NULL));
     
 
-    if (DEBUG_GLOBAL_INFO) printf(" ### Starting program, creating datas, starting threads ###\n");
+    printf("\n\n ### Starting program, creating datas, starting threads ###\n\n");
     
     // init scene vars
     output_render_buffer = (unsigned char*) calloc(RES, sizeof(char) * 4);
@@ -169,11 +168,10 @@ int main(int argc, char *argv[]) {
     cl_int nb_objects = 0;
     cl_int nb_materials = 0;
     Triangle3* triangles;
-    Texture* texture_uvs;
+    UV* texture_uvs;
     Object* objects;
     Material* materials;
 
-    if (DEBUG_GLOBAL_INFO) printf("Loading : %s\n", obj_file_name);
     status = load_obj_file(
         scene_path,
         obj_file_name,
@@ -191,16 +189,6 @@ int main(int argc, char *argv[]) {
         &cam_coordinate,&cam_lookat,
         &sky_light_dir
     );
-
-    int texture_map_res_x, texture_map_res_y;
-    unsigned char* texture_map;
-    status = load_image(default_texture_map_path, &texture_map_res_x, &texture_map_res_y, 0, 0, &texture_map);
-    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Load texture map\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-    
-    int normal_map_res_x, normal_map_res_y;
-    unsigned char* normal_map;
-    status = load_image(default_normal_map_path, &normal_map_res_x, &normal_map_res_y, 0, 0, &normal_map);
-    if (status != CL_SUCCESS || DEBUG_KERNEL_INFO) printf("%s Load normal map\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
     //end deprecated
 
 
@@ -228,9 +216,8 @@ int main(int argc, char *argv[]) {
 
     
     // STEP 3: Create device buffers
-    if (DEBUG_KERNEL_INFO) printf("\nSTEP 3: Create device buffers\n");
     cl_mem triangles_buffer = aspectC_clCreateBuffer(context, CL_MEM_READ_ONLY, nb_triangles * sizeof(Triangle3), NULL, &status);
-    cl_mem uv_map_buffer = aspectC_clCreateBuffer(context, CL_MEM_READ_ONLY, nb_triangles * sizeof(Texture), NULL, &status);
+    cl_mem uv_map_buffer = aspectC_clCreateBuffer(context, CL_MEM_READ_ONLY, nb_triangles * sizeof(UV), NULL, &status);
     cl_mem objects_buffer = aspectC_clCreateBuffer(context, CL_MEM_READ_ONLY, nb_objects * sizeof(Object), NULL, &status);
     cl_mem material_buffer = aspectC_clCreateBuffer(context, CL_MEM_READ_ONLY, nb_materials * sizeof(Material), NULL, &status);
     cl_mem lights_buffer = aspectC_clCreateBuffer(context, CL_MEM_READ_ONLY, RES * sizeof(LightSource3), NULL, &status);
@@ -241,11 +228,8 @@ int main(int argc, char *argv[]) {
         .image_channel_order = CL_RGBA,
         .image_channel_data_type = CL_UNSIGNED_INT8
     };
-    
 
-
-
-    //TODO: This entiere section is deprecated
+    //output image
     cl_image_desc output_image_desc = (cl_image_desc){
         .image_type = CL_MEM_OBJECT_IMAGE2D,
         .image_width = X_RES,
@@ -253,20 +237,14 @@ int main(int argc, char *argv[]) {
     };
     cl_mem render_image = aspectC_clCreateImage(context, CL_MEM_WRITE_ONLY, &image_format, &output_image_desc, NULL, &status);
     
+    //textures images
     cl_image_desc texture_image_desc = (cl_image_desc){
         .image_type = CL_MEM_OBJECT_IMAGE2D,
-        .image_width = texture_map_res_x,
-        .image_height = texture_map_res_y
+        .image_width = 5000,
+        .image_height = 1000
     };
     cl_mem uv_map_image = aspectC_clCreateImage(context, CL_MEM_READ_ONLY, &image_format, &texture_image_desc, NULL, &status);
     
-    cl_image_desc normal_image_desc = (cl_image_desc){
-        .image_type = CL_MEM_OBJECT_IMAGE2D,
-        .image_width = normal_map_res_x,
-        .image_height = normal_map_res_y
-    };
-    cl_mem normal_map_image = aspectC_clCreateImage(context, CL_MEM_READ_ONLY, &image_format, &normal_image_desc, NULL, &status);
-    //end deprecated
 
 
 
@@ -289,22 +267,34 @@ int main(int argc, char *argv[]) {
             cam_moved = 1;
             enqueueKernel = 1;
             
+            size_t offset_temp[3] = {0, 0};
+            unsigned char* texture_map;
+            int texture_map_res_x, texture_map_res_y;
+            for (int i = 0; i<nb_materials; i++) {
+                if (materials[i].hasTexture) {
+                    status = load_image(scene_path, materials[i].texture_path, &texture_map_res_x, &texture_map_res_y, 0, 0, &texture_map);
+                    
+                    materials[i].map_location.v_size= (cl_int2) {texture_map_res_x, texture_map_res_y};
+                    materials[i].map_location.v_off = (cl_int2) {offset_temp[0], offset_temp[1]};
+                    
+                    const size_t texture_region[3] = {texture_map_res_x, texture_map_res_y, 1};
+                    const size_t origin[3] = {offset_temp[0], offset_temp[1], 0};
+                    
+                    status = aspectC_clEnqueueWriteImage(cmdQueue, uv_map_image, CL_TRUE, origin, texture_region, 0, 0, texture_map, 0, NULL, NULL);
+                    
+                    printf("New texture : [%s], [%lix%li] off (+%li,+%li)\n", materials[i].texture_path, texture_region[0], texture_region[1], origin[0], origin[1]);
+                    offset_temp[0] += texture_map_res_x;
+                    //offset_temp[1] += texture_map_res_y;
+                }
+            }
+            free(texture_map);
             
             // STEP 4: Write host data to device buffers
-            if (DEBUG_KERNEL_INFO) printf("\nSTEP 4: Write host data to device buffers\n");
-            
             status = aspectC_clEnqueueWriteBuffer(cmdQueue, triangles_buffer, CL_TRUE, 0, nb_triangles * sizeof(Triangle3), triangles, 0, NULL, NULL);
-            status = aspectC_clEnqueueWriteBuffer(cmdQueue, uv_map_buffer, CL_TRUE, 0, nb_triangles * sizeof(Texture), texture_uvs, 0, NULL, NULL);
+            status = aspectC_clEnqueueWriteBuffer(cmdQueue, uv_map_buffer, CL_TRUE, 0, nb_triangles * sizeof(UV), texture_uvs, 0, NULL, NULL);
             status = aspectC_clEnqueueWriteBuffer(cmdQueue, objects_buffer, CL_TRUE, 0, nb_objects * sizeof(Object), objects, 0, NULL, NULL);
             status = aspectC_clEnqueueWriteBuffer(cmdQueue, material_buffer, CL_TRUE, 0, nb_materials * sizeof(Material), materials, 0, NULL, NULL);
             status = aspectC_clEnqueueWriteBuffer(cmdQueue, lights_buffer, CL_TRUE, 0, nb_lights * sizeof(LightSource3), lights, 0, NULL, NULL);
-            
-            size_t origin[3] = {0, 0, 0};
-            size_t texture_region[3] = {texture_map_res_x, texture_map_res_y, 1};
-            status = aspectC_clEnqueueWriteImage(cmdQueue, uv_map_image, CL_TRUE, origin, texture_region, 0, 0, texture_map, 0, NULL, NULL);
-            
-            size_t normal_region[3] = {normal_map_res_x, normal_map_res_y, 1};
-            status = aspectC_clEnqueueWriteImage(cmdQueue, normal_map_image, CL_TRUE, origin, normal_region, 0, 0, normal_map, 0, NULL, NULL);
             
 
             status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_NB_TRI, sizeof(cl_int), (void*) &nb_triangles);            
@@ -318,7 +308,6 @@ int main(int argc, char *argv[]) {
             status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_LIGHTS, sizeof(cl_mem), (void*) &lights_buffer);
             status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_SKY_DIR, sizeof(Vector3), (void*) &sky_light_dir);
             status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_TXT_M, sizeof(cl_mem), (void*) &uv_map_image);
-            status = aspectC_clSetKernelArg(kernel, ARGUMENT_INDEX_NML_M, sizeof(cl_mem), (void*) &normal_map_image);
             
         }
 
@@ -342,8 +331,6 @@ int main(int argc, char *argv[]) {
             iteration_counter++;
 
             // STEP 10: Enqueue the kernel for execution
-            if (DEBUG_RUN_INFO)  printf("\nSTEP 10: Enqueue the kernel for execution (new frame)\n");fflush(stdout);
-
             size_t globalWorkSize[2]={X_RES, Y_RES};
             status = aspectC_clEnqueueNDRangeKernel( cmdQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
 
@@ -351,11 +338,8 @@ int main(int argc, char *argv[]) {
 
 
             // STEP 12: Read the output buffer back to the host
-            if (DEBUG_RUN_INFO) printf("\nSTEP 12: Read the output buffer back to the host\n");
+            status = aspectC_clEnqueueReadImage(cmdQueue, render_image, CL_TRUE, (size_t[3]){0, 0, 0},(size_t[3]){X_RES, Y_RES, 1}, 0, 0, output_render_buffer, 0, NULL, NULL);
             
-            status = clEnqueueReadImage(cmdQueue, render_image, CL_TRUE, (size_t[3]){0, 0, 0},(size_t[3]){X_RES, Y_RES, 1}, 0, 0, output_render_buffer, 0, NULL, NULL);
-            if (status != CL_SUCCESS || DEBUG_RUN_INFO) printf("%s Read results\n", (status == CL_SUCCESS)? SUCCESS_MSG:(ERROR_MSG));
-
             gettimeofday(&stop, NULL);
             new_frame++;
         }
@@ -367,7 +351,6 @@ int main(int argc, char *argv[]) {
     save_image(output_render_buffer, "_output/output.ppm", X_RES, Y_RES);
 
     // STEP 13: Release OpenCL resources
-    if (DEBUG_GLOBAL_INFO) printf("\nSTEP 13: Release OpenCL resources\n");
     clReleaseKernel(kernel);
     clReleaseCommandQueue(cmdQueue);
     clReleaseMemObject(triangles_buffer);
@@ -380,6 +363,4 @@ int main(int argc, char *argv[]) {
     free(texture_uvs);
     free(lights);
     free(output_render_buffer);
-    free(texture_map);
-    free(normal_map);
 }

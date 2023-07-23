@@ -20,6 +20,7 @@
     #define EE_FLOAT4x4 cl_float16
     #define EE_CHAR cl_char
     #define EE_INT cl_int
+    #define EE_INT2 cl_int2
     #define EE_CONST const
     #define EE_MAX_INT CL_UINT_MAX
 #else
@@ -31,6 +32,7 @@
     #define EE_FLOAT4x4 float16
     #define EE_CHAR char
     #define EE_INT int
+    #define EE_INT2 int2
     #define EE_CONST __constant
     #define PI 3.14159 
     #define EE_MAX_INT UINT_MAX
@@ -73,10 +75,15 @@ typedef struct __attribute__ ((packed)) Triangle3 {
     Sphere3 sphere;
 } Triangle3;
 
-typedef struct __attribute__ ((packed)) Texture {
+typedef struct __attribute__ ((packed)) UV {
     EE_FLOAT2 v1;
     EE_FLOAT2 v2;
     EE_FLOAT2 voff;
+} UV;
+
+typedef struct __attribute__ ((packed)) Texture {
+    EE_INT2 v_off;
+    EE_INT2 v_size;
 } Texture;
 
 //TODO: refactor ?
@@ -85,6 +92,7 @@ typedef struct __attribute__ ((packed)) Material {
     rgb Kd;
     rgb Ke;
     EE_INT hasTexture;
+    Texture map_location;
     EE_CHAR texture_path[400];//useless ?
     EE_INT map_Kd_index;//useless ?
 } Material;

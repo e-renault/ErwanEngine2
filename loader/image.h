@@ -31,19 +31,28 @@ void save_image(unsigned char* image_RGBA, char* location, int X_RES, int Y_RES)
     if (out_of_bound)
         printf(" ##### /!\\ Color out of bound (%i) !!! ##### \n", out_of_bound);
     
-    printf("Image saved [%s] \n", location);
+    printf("Image saved [%s] [%ix%i]\n", location, X_RES, Y_RES);
     fclose(ppmfile);
 }
 
 
-int load_image(char* location, int* x_size, int* y_size, int x_offset, int y_offset, unsigned char** image_RGBA);
-int load_image(char* location, int* x_size, int* y_size, int x_offset, int y_offset, unsigned char** image_RGBA) {
+int load_image(char* img_path, char* img_file_name, int* x_size, int* y_size, int x_offset, int y_offset, unsigned char** image_RGBA);
+int load_image(
+        char* img_path,
+        char* img_file_name,
+        int* x_size, 
+        int* y_size, 
+        int x_offset, 
+        int y_offset, 
+        unsigned char** image_RGBA
+    ) {
     
-    FILE* ppmfile = fopen(location, "rb");
+    char file_path[1000] = "\0";strcat(file_path, img_path);strcat(file_path, img_file_name);
+    FILE* ppmfile = fopen(file_path, "rb");
     //printf("load file: %s\n", location);
 
     if (ppmfile == NULL) {
-        printf("file not found [%s]\n", location);
+        printf("file not found [%s]\n", img_file_name);
         return 0;
     }
 
@@ -84,14 +93,14 @@ int load_image(char* location, int* x_size, int* y_size, int x_offset, int y_off
             }
         }
         fclose(ppmfile);
-        printf("Image loaded [%s] [%i, %i]\n", location, *x_size, *y_size);
+        printf("loaded : %s -> [%ix%i]\n", img_file_name, *x_size, *y_size);
         return 0;
     } else {
         fclose(ppmfile);
         printf("Unsupported format");
         return 1;
     }
-    printf("Unsupported format [%s] [%s]\n", location, format);
+    printf("Unsupported format [%s] [%s]\n", img_file_name, format);
     return 1;
     
 }
