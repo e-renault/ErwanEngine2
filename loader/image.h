@@ -49,7 +49,7 @@ int load_image(
     
     char file_path[1000] = "\0";strcat(file_path, img_path);strcat(file_path, img_file_name);
     FILE* ppmfile = fopen(file_path, "rb");
-    //printf("load file: %s\n", location);
+    printf("load file image: %s\n", file_path);
 
     if (ppmfile == NULL) {
         printf("file not found [%s]\n", img_file_name);
@@ -97,10 +97,9 @@ int load_image(
         return 0;
     } else {
         fclose(ppmfile);
-        printf("Unsupported format");
+        printf("Unsupported format [%s] [%s]\n", img_file_name, format);
         return 1;
     }
-    printf("Unsupported format [%s] [%s]\n", img_file_name, format);
     return 1;
     
 }

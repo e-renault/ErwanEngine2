@@ -46,8 +46,7 @@ $ gcc main.c -lm -lOpenCL -lpthread -lGL -lglut
 optional:
 
 ```
---path  [SCENE_PATH_TO_LOAD] (default:"src/default/")  <- you should use one of the Availables scenes (see section "Available scenes").
---obj  [OBJ_FILE_TO_LOAD in SCENE_PATH_TO_LOAD] (default:"default.obj")  <- you should use one of the Availables scenes (see section "Available scenes").
+--obj  [OBJ_FILE_TO_LOAD] (default:"src/default/default.obj")  <- you should use one of the Availables scenes (see section "Available scenes").
 --FOV   [FIELD_OF_VIEW_IN_DEGREE]       (default:70)
 --XRES  [HORISONTAL_RESOLUTION_IN_PX]   (default:800)
 --YRES  [VERTICAL_RESOLUTION_IN_PX]     (default:600)
@@ -65,11 +64,17 @@ debug (experimental, notes for myself):
 
 ## Available scenes
 
-This is what files you can use using "--obj=" argument. You should also provide the "--path=" texture
+This is what files you can use using "--obj=" argument.
 
 ```
-default        --obj=default.obj     --path=src/default/
-minecraft      --obj=minecraft.obj   --texture=src/minecraft/
+default      --obj=src/default/default.obj
+minecraft    --obj=src/minecraft/minecraft.obj
+ball         --obj=src/ball/ball.obj
+cheval       --obj=src/cheval/cheval.obj
+crate        --obj=src/crate/crate.obj
+maxwell      --obj=src/maxwell/maxwell.obj
+tenet        --obj=src/tenet/tenet.obj
+test         --obj=src/test/test.obj
 ```
 
 ## Controls

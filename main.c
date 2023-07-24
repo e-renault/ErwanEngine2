@@ -18,6 +18,7 @@
 #include <pthread.h>        //obvious
 #include <semaphore.h>      //obvious
 #include <unistd.h>         //semaphore too ? I think.
+#include <libgen.h>         //fore file basename
 
 #include "loader/image.h"
 #include "loader/scene.h"
@@ -35,8 +36,8 @@ static int Y_RES = 600;
 static int X_RES = 800;
 static int RES = 600 * 800;//Y_RES*X_RES
 static float FOV = 70.0;
-static char scene_path[] = "src/default/";
-static char obj_file_name[] = "default.obj";
+static char scene_path[400] = "src/default/";
+static char obj_file_name[100] = "default.obj";
 static char default_texture_map_name[] = "default_texture.ppm";
 
 // debug
@@ -112,10 +113,6 @@ void extract_params(int argc, char *argv[]) {
                     printf(" to : %s", optarg);
                 printf("\n");
                 break;
-            case 'p':
-                strcpy(scene_path, optarg);
-                printf("scene_path set to '%s'\n", scene_path);
-                break;
             case 'x':
                 X_RES = atoi(optarg);
                 printf("X_RES set to '%i'\n", X_RES);
@@ -130,9 +127,15 @@ void extract_params(int argc, char *argv[]) {
                 break;
             case 'o':
                 strcpy(obj_file_name, optarg);
-                printf("obj_file_name set to '%s'\n", obj_file_name);
-                break;
+                char* base = basename(optarg);
+                char* dir = dirname(optarg);
 
+                strcpy(obj_file_name, base);
+                strcpy(scene_path, dir);strcat(scene_path, "/");
+                
+                printf("obj_file_name set to '%s'\n", obj_file_name);
+                printf("scene_path set to '%s'\n", scene_path);
+                break;
             case '?':
                 break;
 
@@ -268,10 +271,10 @@ int main(int argc, char *argv[]) {
             enqueueKernel = 1;
             
             size_t offset_temp[3] = {0, 0};
-            unsigned char* texture_map;
             int texture_map_res_x, texture_map_res_y;
             for (int i = 0; i<nb_materials; i++) {
                 if (materials[i].hasTexture) {
+                    unsigned char* texture_map;
                     status = load_image(scene_path, materials[i].texture_path, &texture_map_res_x, &texture_map_res_y, 0, 0, &texture_map);
                     
                     materials[i].map_location.v_size= (cl_int2) {texture_map_res_x, texture_map_res_y};
@@ -285,9 +288,9 @@ int main(int argc, char *argv[]) {
                     printf("New texture : [%s], [%lix%li] off (+%li,+%li)\n", materials[i].texture_path, texture_region[0], texture_region[1], origin[0], origin[1]);
                     offset_temp[0] += texture_map_res_x;
                     //offset_temp[1] += texture_map_res_y;
+                    free(texture_map);
                 }
             }
-            free(texture_map);
             
             // STEP 4: Write host data to device buffers
             status = aspectC_clEnqueueWriteBuffer(cmdQueue, triangles_buffer, CL_TRUE, 0, nb_triangles * sizeof(Triangle3), triangles, 0, NULL, NULL);

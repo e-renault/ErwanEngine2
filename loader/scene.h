@@ -148,7 +148,7 @@ int load_obj_file(
     (*materials)[0] = (Material) {
         .Kd = (rgb) {1, 1, 1, 1},
         .Ke = (rgb) {0, 0, 0, 1},
-        .hasTexture = 1
+        .hasTexture = 0
     };
 
     *triangle_index = 0;
@@ -191,9 +191,11 @@ int load_obj_file(
                     if (strcmp((*materials)[i].name, material_name) == 0) {
                         //printf("[%s]:[%s] -> %i\n", (*materials)[i].name, material_name, i);
                         (*objects)[*object_index-1].material_index = i;
-                        break;
+                        goto break1;
                     }
                 }
+                printf("Unkown Material [%s]\n", material_name);
+                break1:
             } else {
                 printf("Unkown parameter [%.*s]\n", (int) len2-1, line);
             }
