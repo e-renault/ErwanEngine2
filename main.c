@@ -89,11 +89,9 @@ void extract_params(int argc, char *argv[]) {
         int this_option_optind = optind ? optind : 1;
         int option_index = 0;
         static struct option long_options[] = {
-            {"XRES",    required_argument, 0,  'x' },
-            {"YRES",    required_argument, 0,  'y' },
+            {"RES",     required_argument, 0,  'r' },
             {"FOV",     required_argument, 0,  'f' },
             {"obj",     required_argument, 0,  'o' },
-            {"path",    required_argument, 0,  'p' },
 
             {"XYZ",     no_argument,       &DISPLAY_SCENE_INFO,  1 },
             {"GINFO",   no_argument,       &DEBUG_GLOBAL_INFO,  1 },
@@ -113,13 +111,13 @@ void extract_params(int argc, char *argv[]) {
                     printf(" to : %s", optarg);
                 printf("\n");
                 break;
-            case 'x':
-                X_RES = atoi(optarg);
-                printf("X_RES set to '%i'\n", X_RES);
-                break;
-            case 'y':
-                Y_RES = atoi(optarg);
-                printf("Y_RES set to '%i'\n", Y_RES);
+            case 'r':
+                if (2 == sscanf(optarg,"%dx%d", &X_RES, &Y_RES)){
+                    printf("Y_RES set to '%i'\n", Y_RES);
+                    printf("X_RES set to '%i'\n", X_RES);
+                } else {
+                    printf("Error in resolution format [%s]\n", optarg);
+                }
                 break;
             case 'f':
                 FOV = atof(optarg);

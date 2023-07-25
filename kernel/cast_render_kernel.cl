@@ -205,6 +205,7 @@ __kernel void rayTrace (
         rgb illum_increment = materials[pixel[pos].material_index].Ke;
         int hit = 0;
         int mat_id;
+        ///** 
         int nb_iteration = 1;
         for (int cast_count=0; cast_count <nb_iteration; cast_count++) {
             float x = random_float(pos, &random);
@@ -232,6 +233,38 @@ __kernel void rayTrace (
                 illum_increment += sky_illum_color0 *1.0f;
             }
         }
+        //*/
+
+        /** 
+        int nb_iteration = 20;
+        float goldenRatio = 2. * PI * 1.0/1.618033988749895f;
+        for (int cast_count=0; cast_count <nb_iteration; cast_count++) {
+
+            float theta = cast_count * goldenRatio;
+            float phi = acos(1 - 2*(cast_count+0.5)/nb_iteration);
+            Vector3 v1 = (Vector3) {cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi)};
+            Ray3 new_ray = (Ray3){.p=pixel[pos].point_buffer, .v=v1};
+            
+            Point3 global_pos;Vector3 local_pos, normal;float dist;float max_z = 5.0;int hitted;
+            for(int obj_i = 0; obj_i<nb_object; obj_i++) {
+                for(int i = objects[obj_i].t_buffer_start; i<=objects[obj_i].t_buffer_end; i++) {
+                    hitted = getCollisionRayTriangle(triangles[i], new_ray, max_z, &global_pos, &local_pos, &normal, &dist);
+                    
+                    if (hitted) {
+                        mat_id = objects[obj_i].material_index;
+                        max_z = dist;
+                        hit |= hitted;
+                    }
+                }
+            }
+            if (hit) {
+                illum_increment += materials[mat_id].Ke *10.0f;
+            } else {
+                illum_increment += sky_illum_color0 *1.0f;
+            }
+        }
+        //*/
+
         pixel[pos].global_illum_buffer = (pixel[pos].global_illum_buffer*iteration_count + illum_increment/nb_iteration) / (iteration_count+1);
         pixel[pos].global_illum_buffer = max_rgb(materials[pixel[pos].material_index].Ke, pixel[pos].global_illum_buffer);
     } else {

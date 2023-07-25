@@ -48,8 +48,7 @@ optional:
 ```
 --obj  [OBJ_FILE_TO_LOAD] (default:"src/default/default.obj")  <- you should use one of the Availables scenes (see section "Available scenes").
 --FOV   [FIELD_OF_VIEW_IN_DEGREE]       (default:70)
---XRES  [HORISONTAL_RESOLUTION_IN_PX]   (default:800)
---YRES  [VERTICAL_RESOLUTION_IN_PX]     (default:600)
+--RES   [RESOLUTION_IN_PX]              (default:800x600)
 ```
 
 debug (experimental, notes for myself):
