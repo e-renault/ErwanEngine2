@@ -46,7 +46,7 @@ $ gcc main.c -lm -lOpenCL -lpthread -lGL -lglut
 optional:
 
 ```
---obj  [OBJ_FILE_TO_LOAD] (default:"src/default/default.obj")  <- you should use one of the Availables scenes (see section "Available scenes").
+--SCN  [OBJ_FILE_TO_LOAD] (default:"scn/default/default.obj")  <- you should use one of the Availables scenes (see section "Available scenes").
 --FOV   [FIELD_OF_VIEW_IN_DEGREE]       (default:70)
 --RES   [RESOLUTION_IN_PX]              (default:800x600)
 ```
@@ -63,18 +63,20 @@ debug (experimental, notes for myself):
 
 ## Available scenes
 
-This is what files you can use using "--obj=" argument.
+This is what files you can use using "--SCN=" argument.
 
 ```
-default      --obj=src/default/default.obj
-minecraft    --obj=src/minecraft/minecraft.obj
-ball         --obj=src/ball/ball.obj
-cheval       --obj=src/cheval/cheval.obj
-crate        --obj=src/crate/crate.obj
-maxwell      --obj=src/maxwell/maxwell.obj
-tenet        --obj=src/tenet/tenet.obj
-test         --obj=src/test/test.obj
+default      --SCN=scn/default/default.obj
+minecraft    --SCN=scn/minecraft/minecraft.obj
+ball         --SCN=scn/ball/ball.obj
+cheval       --SCN=scn/cheval/cheval.obj
+crate        --SCN=scn/crate/crate.obj
+maxwell      --SCN=scn/maxwell/maxwell.obj
+tenet        --SCN=scn/tenet/tenet.obj
+test         --SCN=scn/test/test.obj
 ```
+
+To use you own file, obj file should be triangulated, new material should be used on new object only (no multiples material for one object), textures must be in ppm format (P6), and not larger than 1000x1000px. RGB:0xFF00FF is reserved for transparency.
 
 ## Controls
 

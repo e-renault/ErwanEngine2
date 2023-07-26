@@ -195,11 +195,11 @@ __kernel void rayTrace (
     /*********** EEAO ***********/
     EEAO:;
     if (pixel[pos].triangle_index != -1) {
-        Vector3 v1;
+        Vector3 vr;
         if (!isColinear(pixel[pos].normal_buffer, UP)) {
-            v1 = getNorm2(pixel[pos].normal_buffer, UP);
+            vr = getNorm2(pixel[pos].normal_buffer, UP);
         } else {
-            v1 = getNorm2(pixel[pos].normal_buffer, RIGHT);
+            vr = getNorm2(pixel[pos].normal_buffer, RIGHT);
         }
 
         rgb illum_increment = materials[pixel[pos].material_index].Ke;
@@ -211,7 +211,7 @@ __kernel void rayTrace (
             float x = random_float(pos, &random);
             float a = 0.517f, b=1.1f;
             float y = pow(x, a*(b-x));
-            Vector3 new_vd_ray = rotateAround(pixel[pos].normal_buffer, v1, y * (PI/2));
+            Vector3 new_vd_ray = rotateAround(pixel[pos].normal_buffer, vr, y * (PI/2));
             new_vd_ray = rotateAround(new_vd_ray, pixel[pos].normal_buffer, random_float(pos, &random) * 2 * PI);
             Ray3 new_ray = (Ray3){.p=pixel[pos].point_buffer, .v=new_vd_ray};
 
@@ -236,15 +236,25 @@ __kernel void rayTrace (
         //*/
 
         /** 
-        int nb_iteration = 20;
+        int nb_iteration = 10;
         float goldenRatio = 2. * PI * 1.0/1.618033988749895f;
+        float r = random_float(pos, &random)*2*PI;
         for (int cast_count=0; cast_count <nb_iteration; cast_count++) {
 
             float theta = cast_count * goldenRatio;
-            float phi = acos(1 - 2*(cast_count+0.5)/nb_iteration);
-            Vector3 v1 = (Vector3) {cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi)};
-            Ray3 new_ray = (Ray3){.p=pixel[pos].point_buffer, .v=v1};
-            
+            float phi = acos(1 - 1*(cast_count+0.5)/nb_iteration);
+
+            Vector3 v1 = rotateAround(pixel[pos].normal_buffer, vr, phi);
+            Vector3 v2 = rotateAround(v1, pixel[pos].normal_buffer, theta);
+            if (pos == mid) printf("%f\n", theta);
+
+             
+            //Vector3 v1 = (Vector3) {cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi)};
+            //float x = random_float(pos, &random);
+            //Vector3 v2 = rotateAround(v1, pixel[pos].normal_buffer, random_float(pos, &random)*2*PI);
+
+            Ray3 new_ray = (Ray3){.p=pixel[pos].point_buffer, .v=v2};
+
             Point3 global_pos;Vector3 local_pos, normal;float dist;float max_z = 5.0;int hitted;
             for(int obj_i = 0; obj_i<nb_object; obj_i++) {
                 for(int i = objects[obj_i].t_buffer_start; i<=objects[obj_i].t_buffer_end; i++) {

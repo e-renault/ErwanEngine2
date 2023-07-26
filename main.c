@@ -91,7 +91,7 @@ void extract_params(int argc, char *argv[]) {
         static struct option long_options[] = {
             {"RES",     required_argument, 0,  'r' },
             {"FOV",     required_argument, 0,  'f' },
-            {"obj",     required_argument, 0,  'o' },
+            {"SCN",     required_argument, 0,  's' },
 
             {"XYZ",     no_argument,       &DISPLAY_SCENE_INFO,  1 },
             {"GINFO",   no_argument,       &DEBUG_GLOBAL_INFO,  1 },
@@ -123,7 +123,7 @@ void extract_params(int argc, char *argv[]) {
                 FOV = atof(optarg);
                 printf("FOV set to '%f'\n", FOV);
                 break;
-            case 'o':
+            case 's':
                 strcpy(obj_file_name, optarg);
                 char* base = basename(optarg);
                 char* dir = dirname(optarg);
