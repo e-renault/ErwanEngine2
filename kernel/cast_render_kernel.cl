@@ -101,6 +101,7 @@ __kernel void rayTrace (
     //get frame coordinates
     int x = get_global_id(0);
     int y = get_global_id(1);
+    int res = x_res * y_res;
     int pos = y * x_res + x;
     int mid = y_res/2 * x_res + x_res/2;
 
@@ -193,19 +194,22 @@ __kernel void rayTrace (
     }
 
     /*********** EEAO ***********/
+    rgb temp;
     EEAO:;
     if (pixel[pos].triangle_index != -1) {
-        Vector3 vr;
-        if (!isColinear(pixel[pos].normal_buffer, UP)) {
-            vr = getNorm2(pixel[pos].normal_buffer, UP);
-        } else {
-            vr = getNorm2(pixel[pos].normal_buffer, RIGHT);
-        }
+        Vector3 vr, vc;
+        vr = getNorm(triangles[pixel[pos].triangle_index].v[1]);
+        //if (!isColinear(pixel[pos].normal_buffer, UP)) {
+        //    vr = getNorm2(pixel[pos].normal_buffer, UP);
+        //} else {
+        //    vr = getNorm2(pixel[pos].normal_buffer, RIGHT);
+        //}
+        vc = crossProduct(vr, pixel[pos].normal_buffer);
 
         rgb illum_increment = materials[pixel[pos].material_index].Ke;
         int hit = 0;
         int mat_id;
-        ///** 
+        //** 
         int nb_iteration = 1;
         for (int cast_count=0; cast_count <nb_iteration; cast_count++) {
             float x = random_float(pos, &random);
@@ -228,7 +232,7 @@ __kernel void rayTrace (
                 }
             }
             if (hit) {
-                illum_increment += materials[mat_id].Ke *10.0f;
+                illum_increment += materials[mat_id].Ke *1.0f;
             } else {
                 illum_increment += sky_illum_color0 *1.0f;
             }
@@ -236,17 +240,17 @@ __kernel void rayTrace (
         //*/
 
         /** 
-        int nb_iteration = 10;
+        int nb_iteration = 20;
         float goldenRatio = 2. * PI * 1.0/1.618033988749895f;
         float r = random_float(pos, &random)*2*PI;
-        for (int cast_count=0; cast_count <nb_iteration; cast_count++) {
+        for (int cast_count=1; cast_count <nb_iteration; cast_count++) {
 
             float theta = cast_count * goldenRatio;
             float phi = acos(1 - 1*(cast_count+0.5)/nb_iteration);
 
-            Vector3 v1 = rotateAround(pixel[pos].normal_buffer, vr, phi);
-            Vector3 v2 = rotateAround(v1, pixel[pos].normal_buffer, theta);
-            if (pos == mid) printf("%f\n", theta);
+            Vector3 v1 = rotateAround(pixel[pos].normal_buffer, vr, PI/2 - phi);
+            Vector3 v2 = rotateAround(v1, pixel[pos].normal_buffer, theta*r);
+            if (pos == mid) printf("%f\n", PI/2 - phi);
 
              
             //Vector3 v1 = (Vector3) {cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi)};
@@ -275,6 +279,61 @@ __kernel void rayTrace (
         }
         //*/
 
+
+        /** 
+        int k = 3;
+        int nb_iteration = (k*2 +1) * (k*2 +1);
+        int r1 = 1*random %470;
+        int r2 = 2*random %470;
+        int r3 = 3*random %470;
+        int r4 = 4*random %470;
+
+
+        for (int x_o= -k; x_o <= k; x_o++) {
+            for (int y_o= -k; y_o <=k; y_o++) {
+
+                sampler_t msampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_NONE | CLK_FILTER_NEAREST;
+
+                uint4 noise_alpha = read_imageui(texture_map, msampler, (int2)((x +x_o +r1)%470, (y +y_o +r2)%470));
+                uint4 noise_theta = read_imageui(texture_map, msampler, (int2)((x +x_o +r3)%470, (y +y_o +r4)%470));
+
+                float alpha = (float) noise_alpha.x/255;
+                float theta = (float) noise_theta.x/255;
+
+                float a = 0.517f, b=1.1f;
+                float alpha_exp = 1-pow(alpha, a*(b-alpha));
+
+                //Vector3 r1 = rotateAround(pixel[pos].normal_buffer, vr, alpha * (PI/2));
+                //Vector3 r2 = rotateAround(pixel[pos].normal_buffer, vc, theta * (PI/2));
+                //Ray3 new_ray = (Ray3){.p=pixel[pos].point_buffer, .v=r1+r2};
+
+                Vector3 new_vd_ray = rotateAround(pixel[pos].normal_buffer, vr, alpha_exp * (PI/2));
+                new_vd_ray = rotateAround(new_vd_ray, pixel[pos].normal_buffer, theta * 2 * PI);
+                Ray3 new_ray = (Ray3){.p=pixel[pos].point_buffer, .v=new_vd_ray};
+                
+                //if (pos==mid) printf("%f %f\n", alpha, theta);
+
+                Point3 global_pos;Vector3 local_pos, normal;float dist;float max_z = 5.0;int hitted;
+                for(int obj_i = 0; obj_i<nb_object; obj_i++) {
+                    for(int i = objects[obj_i].t_buffer_start; i<=objects[obj_i].t_buffer_end; i++) {
+                        hitted = getCollisionRayTriangle(triangles[i], new_ray, max_z, &global_pos, &local_pos, &normal, &dist);
+                        
+                        if (hitted) {
+                            mat_id = objects[obj_i].material_index;
+                            max_z = dist;
+                            hit |= hitted;
+                        }
+                    }
+                }
+                if (hit) {
+                    illum_increment += materials[mat_id].Ke;
+                } else {
+                    illum_increment += sky_illum_color0;
+                }
+            }
+        }
+        //*/
+
         pixel[pos].global_illum_buffer = (pixel[pos].global_illum_buffer*iteration_count + illum_increment/nb_iteration) / (iteration_count+1);
         pixel[pos].global_illum_buffer = max_rgb(materials[pixel[pos].material_index].Ke, pixel[pos].global_illum_buffer);
     } else {
@@ -286,26 +345,31 @@ __kernel void rayTrace (
     rgb mean = {0,0,0,1};
     float div = 0;
     int kernel_size = 10;
-    for (int xc = -kernel_size; xc<=kernel_size; xc++) {
-        for (int yc = -kernel_size; yc<=kernel_size; yc++) {
-            if (pixel[coord(xc +x, yc +y, x_res, y_res)].normal_buffer.x == pixel[pos].normal_buffer.x &&
-            pixel[coord(xc +x, yc +y, x_res, y_res)].normal_buffer.y == pixel[pos].normal_buffer.y &&
-            pixel[coord(xc +x, yc +y, x_res, y_res)].normal_buffer.z == pixel[pos].normal_buffer.z) {
-                float p = pow(1 - sqrt((float) xc*xc + yc*yc) / (kernel_size*kernel_size), 5);
-                div += p;
-                mean += pixel[coord(xc +x, yc +y, x_res, y_res)].global_illum_buffer * p;
+    //if (x>x_res/2) {
+        for (int xc = -kernel_size; xc<=kernel_size; xc++) {
+            for (int yc = -kernel_size; yc<=kernel_size; yc++) {
+                if (pixel[coord(xc +x, yc +y, x_res, y_res)].object_index == pixel[pos].object_index &&
+                    pixel[coord(xc +x, yc +y, x_res, y_res)].normal_buffer.x == pixel[pos].normal_buffer.x &&
+                    pixel[coord(xc +x, yc +y, x_res, y_res)].normal_buffer.y == pixel[pos].normal_buffer.y &&
+                    pixel[coord(xc +x, yc +y, x_res, y_res)].normal_buffer.z == pixel[pos].normal_buffer.z) {
+                    
+                    float p = pow(1 - sqrt((float) xc*xc + yc*yc) / (kernel_size*kernel_size), 5);
+                    div += p;
+                    mean += pixel[coord(xc +x, yc +y, x_res, y_res)].global_illum_buffer * p;
+                }
             }
-            
         }
-    }
-    mean /= div;//*/
+        mean /= div;
+    /*} else {
+        mean = pixel[pos].global_illum_buffer;
+    }//*/
     
     /*********** Build up final render ***********///
     float direct_light_coef = 0.5f;
     rgb c = pixel[pos].color_value_buffer 
         * pixel[pos].global_illum_buffer
         * ((1-direct_light_coef) + pixel[pos].direct_light_buffer*direct_light_coef);
-    //c = mean;
+    //c = pixel[pos].global_illum_buffer;
         //* mean
         //* pixel[pos].global_illum_buffer
     

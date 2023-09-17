@@ -36,7 +36,7 @@ static int Y_RES = 600;
 static int X_RES = 800;
 static int RES = 600 * 800;//Y_RES*X_RES
 static float FOV = 70.0;
-static char scene_path[400] = "src/default/";
+static char scene_path[400] = "scn/default/";
 static char obj_file_name[100] = "default.obj";
 static char default_texture_map_name[] = "default_texture.ppm";
 
@@ -77,7 +77,26 @@ sem_t mutex;
 #include "tools/gui_tools.h"
 #include "tools/aspectc.h"
 
-
+void printHelp();
+void printHelp() {
+    printf("Usage: ee [OPTIONS]\n");
+    printf("Render 3D scenes with various options.\n");
+    printf("\n");
+    printf("Options:\n");
+    printf("  --SCN [OBJ_FILE_TO_LOAD]         Specify the scene to load (default: scn/default/default.obj)\n");
+    printf("                                   Available scenes:\n");
+    printf("                                   - default      (scn/default/default.obj)\n");
+    printf("                                   - minecraft    (scn/minecraft/minecraft.obj)\n");
+    printf("                                   - ball         (scn/ball/ball.obj)\n");
+    printf("                                   - cheval       (scn/cheval/cheval.obj)\n");
+    printf("                                   - crate        (scn/crate/crate.obj)\n");
+    printf("                                   - maxwell      (scn/maxwell/maxwell.obj)\n");
+    printf("                                   - tenet        (scn/tenet/tenet.obj)\n");
+    printf("                                   - test         (scn/test/test.obj)\n");
+    printf("  --FOV [FIELD_OF_VIEW_IN_DEGREE]  Set the field of view in degrees (default: 70)\n");
+    printf("  --RES [RESOLUTION_IN_PX]         Set the resolution in pixels (default: 800x600)\n");
+    printf("\n");
+}
 
 /** LOCAL FUNCTIONNALITIES **/
 void extract_params(int argc, char *argv[]);
@@ -89,16 +108,17 @@ void extract_params(int argc, char *argv[]) {
         int this_option_optind = optind ? optind : 1;
         int option_index = 0;
         static struct option long_options[] = {
+            {"help",    no_argument,       0,  'h' },
             {"RES",     required_argument, 0,  'r' },
             {"FOV",     required_argument, 0,  'f' },
             {"SCN",     required_argument, 0,  's' },
 
             {"XYZ",     no_argument,       &DISPLAY_SCENE_INFO,  1 },
-            {"GINFO",   no_argument,       &DEBUG_GLOBAL_INFO,  1 },
-            {"KINFO",   no_argument,       &DEBUG_KERNEL_INFO,  1 },
-            {"HINFO",   no_argument,       &DEBUG_HARDWARE_INFO,  1 },
-            {"RINFO",   no_argument,       &DEBUG_RUN_INFO,     1 },
-            {0,         0,                 0,  0 }
+            {"GINFO",   no_argument,       &DEBUG_GLOBAL_INFO,   1 },
+            {"KINFO",   no_argument,       &DEBUG_KERNEL_INFO,   1 },
+            {"HINFO",   no_argument,       &DEBUG_HARDWARE_INFO, 1 },
+            {"RINFO",   no_argument,       &DEBUG_RUN_INFO,      1 },
+            {0,         0,                 0,                    0 }
 
         };
         c = getopt_long(argc, argv, "abc:d:012", long_options, &option_index);
@@ -135,7 +155,9 @@ void extract_params(int argc, char *argv[]) {
                 printf("scene_path set to '%s'\n", scene_path);
                 break;
             case '?':
-                break;
+            case 'h':
+                printHelp();
+                exit(0);
 
             default:
                 printf("?? getopt returned character code 0%o ??\n", c);
